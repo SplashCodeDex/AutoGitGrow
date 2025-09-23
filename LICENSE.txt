@@ -1,8 +1,8 @@
 Fair2Share License 1.0
 
-© 2025 Ikrame Saadi (@ikramagix) and Nikolaï Korolkov (@gr33kurious)
+© 2025 SplashCodeDex
 
-Source code: https://github.com/ikramagix/GitGrowBot/
+Source code: https://github.com/SplashCodeDex/AutoGitGrow/
 
 1. Purpose
    You may copy, study, modify, and share this Software free of
@@ -34,8 +34,8 @@ Source code: https://github.com/ikramagix/GitGrowBot/
 
 5. Commercial use
    Any other purpose is Commercial.
-   Contact us to negotiate a paid or 
-   revenue-share licence: hello@ikramagix.com
+   Contact the maintainer to negotiate a paid or 
+   revenue-share licence.
 
 6. Contributions back
    Feedback, changes, or additions you contribute must be:

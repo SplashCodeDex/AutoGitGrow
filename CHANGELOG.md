@@ -1,6 +1,6 @@
 ## \[1.0.0] – 2025-05-19 (Pre-release)
 
-* Initial public release of GitGrowBot.
+* Initial public release of AutoGitGrow.
 * Automated follow/unfollow via scheduled GitHub Actions.
 * Whitelist support to protect accounts from actions.
 * Configurable target user list (`usernames.txt`), deduped and checked.
@@ -10,8 +10,8 @@
 * Isolated config/testing infrastructure.
 
 **Contributors:**
-[@ikramagix](https://github.com/ikramagix), [@gr33kurious](https://github.com/gr33kurious)
-[All commits →](https://github.com/ikramagix/GitGrowBot/commits/1.0.0)
+[@SplashCodeDex](https://github.com/SplashCodeDex)
+[All commits →](https://github.com/SplashCodeDex/AutoGitGrow/commits/1.0.0)
 
 ---
 
@@ -44,8 +44,8 @@
 * Stargazer shoutouts workflow is for repo analytics/discussion, not for general users.
 
 **Contributors:**
-[@ikramagix](https://github.com/ikramagix)
-[All commits →](https://github.com/ikramagix/GitGrowBot/commits/1.1.0)
+[@SplashCodeDex](https://github.com/SplashCodeDex)
+[All commits →](https://github.com/SplashCodeDex/AutoGitGrow/commits/1.1.0)
 
 ## [1.1.1] – 2025-06-29
 
@@ -69,6 +69,5 @@
 * Documentation improved for clarity regarding analytics and reciprocity workflows.
 
 **Contributors:**
-[@ikramagix](https://github.com/ikramagix)
-[All commits →](https://github.com/ikramagix/GitGrowBot/commits/1.1.1)
----
+[@SplashCodeDex](https://github.com/SplashCodeDex)
+[All commits →](https://github.com/SplashCodeDex/AutoGitGrow/commits/1.1.1)
