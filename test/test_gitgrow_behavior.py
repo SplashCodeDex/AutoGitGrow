@@ -12,8 +12,18 @@ def load_script(path):
     spec.loader.exec_module(mod)
     return mod
 
+from datetime import datetime, timezone
+
+class DummyEvent:
+    def __init__(self):
+        self.created_at = datetime.now(timezone.utc)
+
 class DummyUser:
-    def __init__(self, login): self.login = login
+    def __init__(self, login):
+        self.login = login
+
+    def get_events(self):
+        return [DummyEvent()]
 
 class DummyMe:
     def __init__(self):
