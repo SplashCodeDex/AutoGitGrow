@@ -4,7 +4,13 @@ import sys
 from pathlib import Path
 from github import Github, GithubException
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
+    args = parser.parse_args()
+
     # — Auth & client setup —
     token = os.getenv("PAT_TOKEN")  # Retrieve GitHub token from environment variables
     if not token:
@@ -42,7 +48,8 @@ def main():
     for login in to_unfollow:
         user = following_map[login]
         try:
-            me.remove_from_following(user)  # Attempt to unfollow the user
+            if not args.dry_run:
+                me.remove_from_following(user)  # Attempt to unfollow the user
             unfollowed += 1
             print(f"[UNFOLLOWED] {login}")  # Print success message
         except GithubException as e:

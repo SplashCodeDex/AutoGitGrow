@@ -10,9 +10,15 @@ from datetime import datetime, timedelta, timezone
 TOKEN = os.getenv("PAT_TOKEN")
 BOT_USER = os.getenv("BOT_USER")
 STATE_PATH = Path(".github/state/stargazer_state.json")
-DAYS_UNTIL_UNSTAR = 4  # Timeout for growth stars
+
+import argparse
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
+    parser.add_argument("--days-until-unstar", type=int, default=4, help="Number of days to wait before unstarring a repository")
+    args = parser.parse_args()
+
     print("=== GitGrowBot autounstarback.py started ===")
     if not TOKEN:
         print("ERROR: PAT_TOKEN required.", file=sys.stderr)
@@ -49,15 +55,16 @@ def main():
             else:
                 try:
                     starred_dt = datetime.fromisoformat(starred_at.replace("Z", "+00:00"))
-                    if now - starred_dt > timedelta(days=DAYS_UNTIL_UNSTAR):
+                    if now - starred_dt > timedelta(days=args.days_until_unstar):
                         do_unstar = True
                 except Exception:
                     do_unstar = True  # treat bad timestamp as expired
 
             if do_unstar:
                 try:
-                    repo = gh.get_repo(repo_name)
-                    gh.get_user().remove_from_starred(repo)
+                    if not args.dry_run:
+                        repo = gh.get_repo(repo_name)
+                        gh.get_user().remove_from_starred(repo)
                     print(f"[growth timeout] Unstarred {repo_name} for {user} (no reciprocation)")
                 except Exception as e:
                     print(f"  Warning: could not unstar {repo_name}: {e}")
@@ -81,8 +88,9 @@ def main():
             for i in range(excess):
                 repo_name = starred_back.pop()
                 try:
-                    repo = gh.get_repo(repo_name)
-                    gh.get_user().remove_from_starred(repo)
+                    if not args.dry_run:
+                        repo = gh.get_repo(repo_name)
+                        gh.get_user().remove_from_starred(repo)
                     print(f"[over-recip] Unstarred {repo_name} for {user}")
                 except Exception as e:
                     print(f"  Warning: could not unstar {repo_name}: {e}")

@@ -12,9 +12,15 @@ BOT_USER = os.getenv("BOT_USER")
 TOKEN = os.getenv("PAT_TOKEN")
 STATE_PATH = Path(".github/state/stargazer_state.json")
 USERNAMES_PATH = Path("config/usernames.txt")
-GROWTH_SAMPLE = 10  # Number of new growth users to process per run
+
+import argparse
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
+    parser.add_argument("--growth-sample", type=int, default=10, help="Number of new growth users to process per run")
+    args = parser.parse_args()
+
     print("=== GitGrowBot autostargrow.py started ===")
 
     if not TOKEN or not BOT_USER:
@@ -72,7 +78,7 @@ def main():
     # Exclude already starred users
     available = set(all_usernames) - set(growth_starred)
     print(f"  {len(available)} candidates for growth starring.")
-    sample = random.sample(list(available), min(GROWTH_SAMPLE, len(available)))
+    sample = random.sample(list(available), min(args.growth_sample, len(available)))
 
     now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -91,7 +97,8 @@ def main():
                 continue
             repo = random.choice(repos)
             print(f"    Starring repo: {repo.full_name}")
-            me.add_to_starred(repo)
+            if not args.dry_run:
+                me.add_to_starred(repo)
             growth_starred.setdefault(user, [])
             growth_starred[user].append({
                 "repo": repo.full_name,

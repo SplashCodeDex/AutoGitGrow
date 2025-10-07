@@ -6,7 +6,13 @@ from pathlib import Path
 from github import Github, GithubException
 from datetime import datetime, timedelta, timezone
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
+    args = parser.parse_args()
+
     # — Auth & client setup —
     token = os.getenv("PAT_TOKEN")  # Retrieve GitHub token from environment variables
     if not token:
@@ -79,7 +85,8 @@ def main():
 
         # attempt follow
         try:
-            me.add_to_following(user)  # Attempt to follow the user
+            if not args.dry_run:
+                me.add_to_following(user)  # Attempt to follow the user
             new_followed += 1
             print(f"[FOLLOWED] {login} ({new_followed}/{per_run})")  # Print success message
         except GithubException as e:
@@ -109,7 +116,8 @@ def main():
         if ll == me.login.lower() or ll in whitelist or ll in following:
             continue  # Skip if the username is the authenticated user, in the whitelist, or already followed
         try:
-            me.add_to_following(user)  # Attempt to follow-back the user
+            if not args.dry_run:
+                me.add_to_following(user)  # Attempt to follow-back the user
             back_count += 1
             print(f"[FOLLOW-BACKED] {login}")  # Print success message
         except GithubException as e:

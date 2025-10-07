@@ -11,7 +11,13 @@ TOKEN = os.getenv("PAT_TOKEN")
 BOT_USER = os.getenv("BOT_USER")
 STATE_PATH = Path(".github/state/stargazer_state.json")
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
+    args = parser.parse_args()
+
     print("==== [START] autostarback.py ====")
     print(f"ENV: TOKEN={'SET' if TOKEN else 'UNSET'} BOT_USER={BOT_USER}")
 
@@ -73,8 +79,9 @@ def main():
                 repo_name = user_repo_names[len(starred_back)]
                 print(f"[autostarback] Starring {repo_name} for {user} (to match count)")
                 try:
-                    repo = gh.get_repo(repo_name)
-                    me.add_to_starred(repo)
+                    if not args.dry_run:
+                        repo = gh.get_repo(repo_name)
+                        me.add_to_starred(repo)
                     starred_back.append(repo_name)
                     changed = True
                 except Exception as err:
