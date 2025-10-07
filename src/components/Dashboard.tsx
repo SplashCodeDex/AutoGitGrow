@@ -44,6 +44,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
         stats: placeholderStatsData,
         growthData: placeholderFollowerGrowthData,
         activityFeed: placeholderActivityFeedData,
+        reciprocity: {},
         loading: true,
         error: null,
     });
@@ -69,6 +70,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     },
                     growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
+                    reciprocity: stargazerFile.reciprocity,
                     loading: false,
                     error: null,
                 });
@@ -87,7 +89,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
 
         fetchDashboardData();
     }, [repoOwner, repoName]);
-    const { stats, growthData, activityFeed, loading, error } = dashboardData;
+    const { stats, growthData, activityFeed, reciprocity, loading, error } = dashboardData;
 
     if (error) {
         return (
@@ -188,6 +190,12 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     })}
                     </ul>
                 </div>
+            </div>
+            <div className="mt-8">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Reciprocity Data</h2>
+                <pre className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg text-sm text-slate-700 dark:text-slate-300">
+                    {JSON.stringify(reciprocity, null, 2)}
+                </pre>
             </div>
             {!loading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} isDarkMode={isDarkMode} /></div>}
         </>
