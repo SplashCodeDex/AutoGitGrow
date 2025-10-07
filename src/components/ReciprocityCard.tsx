@@ -3,7 +3,11 @@ import React from 'react';
 const ReciprocityCard = ({ username, data }) => {
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">{username}</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">
+                <a href={`https://github.com/${username}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    {username}
+                </a>
+            </h3>
             <div>
                 <h4 className="font-semibold text-green-500">Starred By You:</h4>
                 <ul className="text-green-500">

@@ -188,7 +188,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="text-slate-700 dark:text-slate-300 truncate">
-                                    <span className="font-semibold">{item.type}:</span> {item.target}
+                                    <span className="font-semibold">{item.type}:</span> <a href={`https://github.com/${item.target}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.target}</a>
                                     </p>
                                     <p className="text-slate-500 dark:text-slate-500 text-xs">{formatDistanceToNow(item.time, { addSuffix: true })}</p>
                                 </div>
