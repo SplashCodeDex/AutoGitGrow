@@ -33,7 +33,7 @@ The motto **“You only get what you give”** drives AutoGitGrow’s behavior:
 ## ✨ Features
 
 - **Live Data Dashboard & AI Insights**
-  - **Real-time Analytics:** A powerful web dashboard that fetches live data from the `tracker-data` branch in your repository.
+  - **Real-time Analytics:** A powerful web dashboard that fetches live data from the `autogitgrow-data` repository.
   - **Track Your Growth:** See up-to-date metrics on followers gained, follow-backs, and unfollows.
   - **Visualize Progress:** An interactive chart shows your follower growth over time.
   - **Live Activity Feed:** Keep an eye on the bot's most recent actions.
@@ -51,7 +51,7 @@ The motto **“You only get what you give”** drives AutoGitGrow’s behavior:
 - **Utilities & Workflows**
   - A suite of Python scripts for list cleaning, integrity checks, and more.
   - Pre-built GitHub Actions workflows for scheduled and manual runs (`run_follow.yml`, `run_unfollow.yml`, `autostar.yml`).
-  - All state and logs are persisted to a dedicated `tracker-data` branch to keep your main codebase clean.
+
 
 ## Getting started
 
@@ -61,8 +61,7 @@ The motto **“You only get what you give”** drives AutoGitGrow’s behavior:
    - Add a repository variable named `BOT_USER` with _your_ GitHub username.
 3. (Optional) Add your username to `config/usernames.txt` to be discovered by others.
 4. (Important) Edit `config/whitelist.txt` to protect accounts you never want the script to act on.
-5. (One-time setup) Manually create an empty `tracker-data` branch. This is required for storing state files.
-6. **Enable** GitHub Actions in your repo's **Actions** tab. The workflows will start running on their predefined schedules.
+5. **Enable** GitHub Actions in your repo's **Actions** tab. The workflows will start running on their predefined schedules.
 7. Sit back and code—**AutoGitGrow** will handle the networking for you!
 
 ## ✍️ A Note on Responsible Use
