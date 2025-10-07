@@ -49,23 +49,24 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     });
 
     useEffect(() => {
-        
-        
         const fetchDashboardData = async () => {
             try {
-                const [statsFile, activityFile] = await Promise.all([
-                    fetchFromGitHub(repoOwner, repoName, '.github/state/follower_stats.json'),
-                    fetchFromGitHub(repoOwner, repoName, '.github/state/activity_log.json'),
-                ]);
-                
-                const parsedActivity = activityFile.map(item => ({
-                    ...item,
-                    time: new Date(item.time)
-                })).sort((a,b) => b.time - a.time);
+                const stargazerFile = await fetchFromGitHub(repoOwner, repoName, '.github/state/stargazer_state.json');
+
+                const parsedActivity = stargazerFile.current_stargazers.map(item => ({
+                    type: 'Star',
+                    target: item,
+                    time: new Date()
+                })).sort((a, b) => b.time - a.time);
 
                 setDashboardData({
-                    stats: statsFile.stats,
-                    growthData: statsFile.growth,
+                    stats: {
+                        followersGained: 0,
+                        followBacks: 0,
+                        unfollowed: 0,
+                        stargazers: stargazerFile.current_stargazers.length,
+                    },
+                    growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
                     loading: false,
                     error: null,
@@ -82,9 +83,9 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                 });
             }
         };
-        
+
         fetchDashboardData();
-    }, []);
+    }, [repoOwner, repoName]);
     const { stats, growthData, activityFeed, loading, error } = dashboardData;
 
     if (error) {
