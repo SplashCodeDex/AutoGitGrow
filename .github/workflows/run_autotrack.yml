@@ -37,7 +37,7 @@ jobs:
         with:
           repository: SplashCodeDex/autogitgrow-data
           path: data
-          token: ${{ secrets.DATA_REPO_PAT }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Copy data to data repository
         run: |
