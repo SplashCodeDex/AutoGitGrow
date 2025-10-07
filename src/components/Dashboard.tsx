@@ -61,7 +61,11 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
             try {
                 const stargazerFile = await fetchFromGitHub(repoOwner, repoName);
 
-                const parsedActivity = stargazerFile.current_stargazers.map(item => ({
+                const current_stargazers = stargazerFile.current_stargazers || [];
+                const unstargazers = stargazerFile.unstargazers || [];
+                const reciprocity = stargazerFile.reciprocity || {};
+
+                const parsedActivity = current_stargazers.map(item => ({
                     type: 'Star',
                     target: item,
                     time: new Date()
@@ -72,12 +76,12 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                         followersGained: 0,
                         followBacks: 0,
                         unfollowed: 0,
-                        stargazers: stargazerFile.current_stargazers.length,
-                        unstargazers: stargazerFile.unstargazers.length,
+                        stargazers: current_stargazers.length,
+                        unstargazers: unstargazers.length,
                     },
                     growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
-                    reciprocity: stargazerFile.reciprocity,
+                    reciprocity: reciprocity,
                     loading: false,
                     error: null,
                 });
