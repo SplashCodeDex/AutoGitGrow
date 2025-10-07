@@ -66,6 +66,8 @@ const App = () => {
       case 'dashboard':
         return <Dashboard 
                   isDarkMode={isDarkMode}
+                  repoOwner={process.env.VITE_REPO_OWNER}
+                  repoName={process.env.VITE_REPO_NAME}
                />;
       case 'settings':
         return <SettingsPage isDarkMode={isDarkMode} />;

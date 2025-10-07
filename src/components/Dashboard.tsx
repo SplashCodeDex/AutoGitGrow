@@ -7,7 +7,39 @@ import StatCard from './StatCard';
 import SkeletonCard from './SkeletonCard';
 import PageHeader from './PageHeader';
 
-const Dashboard = ({ isDarkMode }) => {
+// --- Placeholder Data (used as fallback) ---
+const placeholderStatsData = {
+  followersGained: 0,
+  followBacks: 0,
+  unfollowed: 0,
+  stargazers: 0,
+};
+
+const placeholderFollowerGrowthData = Array.from({ length: 7 }, (_, i) => ({ name: `Day ${i + 1}`, followers: 0 }));
+
+const placeholderActivityFeedData = [
+    { type: 'Info', target: 'Waiting for first bot run...', time: new Date() },
+];
+
+
+// --- API Helpers ---
+async function fetchFromGitHub(owner, repo, path) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=tracker-data`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'AutoGitGrow-Dashboard' }
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`Data file not found at '${path}'. Please ensure the bot has run at least once and the 'tracker-data' branch exists.`);
+    }
+    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  const content = atob(data.content);
+  return JSON.parse(content);
+}
+
+const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     const [dashboardData, setDashboardData] = useState({
         stats: placeholderStatsData,
         growthData: placeholderFollowerGrowthData,
@@ -17,14 +49,13 @@ const Dashboard = ({ isDarkMode }) => {
     });
 
     useEffect(() => {
-        const REPO_OWNER = 'SplashCodeDex';
-        const REPO_NAME = 'AutoGitGrow';
+        
         
         const fetchDashboardData = async () => {
             try {
                 const [statsFile, activityFile] = await Promise.all([
-                    fetchFromGitHub(REPO_OWNER, REPO_NAME, '.github/state/follower_stats.json'),
-                    fetchFromGitHub(REPO_OWNER, REPO_NAME, '.github/state/activity_log.json'),
+                    fetchFromGitHub(repoOwner, repoName, '.github/state/follower_stats.json'),
+                    fetchFromGitHub(repoOwner, repoName, '.github/state/activity_log.json'),
                 ]);
                 
                 const parsedActivity = activityFile.map(item => ({
@@ -67,7 +98,6 @@ const Dashboard = ({ isDarkMode }) => {
         )
     }
 
-    // FIX: Added types for the CustomTooltip props to resolve TypeScript error.
     const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string | number }) => {
         if (active && payload && payload.length) {
           return (
