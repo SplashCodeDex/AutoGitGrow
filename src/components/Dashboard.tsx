@@ -65,6 +65,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                         followBacks: 0,
                         unfollowed: 0,
                         stargazers: stargazerFile.current_stargazers.length,
+                        unstargazers: stargazerFile.unstargazers.length,
                     },
                     growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
@@ -128,6 +129,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                         <StatCard title="Followers Gained" value={stats.followersGained} icon={UserPlus} color="text-green-500 bg-green-500" />
                         <StatCard title="Follow-backs Received" value={stats.followBacks} icon={Users} color="text-blue-500 bg-blue-500" />
                         <StatCard title="Users Unfollowed" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Unstargazers" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
                         <StatCard title="New Stargazers" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
                     </>
                 )}
