@@ -39,6 +39,8 @@ async function fetchFromGitHub(owner, repo, path) {
   return JSON.parse(content);
 }
 
+import ReciprocityCard from './ReciprocityCard';
+
 const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     const [dashboardData, setDashboardData] = useState({
         stats: placeholderStatsData,
@@ -193,9 +195,11 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
             </div>
             <div className="mt-8">
                 <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Reciprocity Data</h2>
-                <pre className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg text-sm text-slate-700 dark:text-slate-300">
-                    {JSON.stringify(reciprocity, null, 2)}
-                </pre>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(reciprocity).map(([username, data]) => (
+                        <ReciprocityCard key={username} username={username} data={data} />
+                    ))}
+                </div>
             </div>
             {!loading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} isDarkMode={isDarkMode} /></div>}
         </>
