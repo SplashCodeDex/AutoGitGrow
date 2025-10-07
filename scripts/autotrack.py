@@ -91,6 +91,22 @@ def main():
     unstargazers = sorted(list(previous_stargazers - stargazer_set))
     print(f"Unstargazers detected: {len(unstargazers)}")
 
+    # Find suggested users to follow
+    suggested_users = []
+    print("Finding suggested users to follow...")
+    try:
+        trending_repos = gh.search_repositories(query="stars:>100", sort="stars", order="desc")
+        for repo in trending_repos:
+            if len(suggested_users) >= 50: # Limit suggestions to 50
+                break
+            for stargazer in repo.get_stargazers():
+                if stargazer.login not in stargazer_set and stargazer.login != me.login:
+                    suggested_users.append(stargazer.login)
+                    if len(suggested_users) >= 50:
+                        break
+    except Exception as e:
+        print(f"ERROR fetching trending repositories or stargazers: {e}")
+
     top_repositories = sorted([{"name": repo.full_name, "stargazers_count": repo.stargazers_count} for repo in repos], key=lambda r: r["stargazers_count"], reverse=True)
 
     # Save new state
@@ -101,6 +117,7 @@ def main():
         "unstargazers": unstargazers,
         "reciprocity": reciprocity,
         "top_repositories": top_repositories,
+        "suggested_users": suggested_users,
     }
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(STATE_PATH, "w") as f:

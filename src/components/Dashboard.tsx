@@ -42,6 +42,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
         activityFeed: placeholderActivityFeedData,
         reciprocity: {},
         topRepositories: [],
+        suggestedUsers: [],
         loading: true,
         error: null,
     });
@@ -55,6 +56,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                 const unstargazers = stargazerFile.unstargazers || [];
                 const reciprocity = stargazerFile.reciprocity || {};
                 const topRepositories = stargazerFile.top_repositories || [];
+                const suggestedUsers = stargazerFile.suggested_users || [];
 
                 const parsedActivity = current_stargazers.map(item => ({
                     type: 'Star',
@@ -77,6 +79,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     activityFeed: parsedActivity,
                     reciprocity: reciprocity,
                     topRepositories: topRepositories,
+                    suggestedUsers: suggestedUsers,
                     loading: false,
                     error: null,
                 });
@@ -95,7 +98,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
 
         fetchDashboardData();
     }, [repoOwner, repoName]);
-    const { stats, growthData, activityFeed, reciprocity, topRepositories, loading, error } = dashboardData;
+    const { stats, growthData, activityFeed, reciprocity, topRepositories, suggestedUsers, loading, error } = dashboardData;
 
     if (error) {
         return (
@@ -233,6 +236,20 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+            <div className="mt-8">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Suggested Users</h2>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
+                    <ul className="space-y-2">
+                        {suggestedUsers.map((user, index) => (
+                            <li key={index} className="text-slate-700 dark:text-slate-300">
+                                <a href={`https://github.com/${user}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    {user}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             </div>
             {!loading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} isDarkMode={isDarkMode} /></div>}
