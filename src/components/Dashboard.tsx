@@ -23,20 +23,25 @@ const placeholderActivityFeedData = [
 
 
 // --- API Helpers ---
-async function fetchFromGitHub(owner, repo, path) {
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=tracker-data`;
-  const response = await fetch(url, {
+async function fetchFromGitHub(owner, repo) {
+  const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+  const releaseResponse = await fetch(releaseUrl, {
     headers: { 'User-Agent': 'AutoGitGrow-Dashboard' }
   });
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error(`Data file not found at '${path}'. Please ensure the bot has run at least once and the 'tracker-data' branch exists.`);
-    }
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+  if (!releaseResponse.ok) {
+    throw new Error(`GitHub API error: ${releaseResponse.status} ${releaseResponse.statusText}`);
   }
-  const data = await response.json();
-  const content = atob(data.content);
-  return JSON.parse(content);
+  const releaseData = await releaseResponse.json();
+  const asset = releaseData.assets.find(asset => asset.name === 'stargazer_state.json');
+  if (!asset) {
+    throw new Error('stargazer_state.json not found in the latest release.');
+  }
+  const assetUrl = asset.browser_download_url;
+  const assetResponse = await fetch(assetUrl);
+  if (!assetResponse.ok) {
+    throw new Error(`Failed to download asset: ${assetResponse.status} ${assetResponse.statusText}`);
+  }
+  return await assetResponse.json();
 }
 
 import ReciprocityCard from './ReciprocityCard';
@@ -54,7 +59,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const stargazerFile = await fetchFromGitHub(repoOwner, repoName, '.github/state/stargazer_state.json');
+                const stargazerFile = await fetchFromGitHub(repoOwner, repoName);
 
                 const parsedActivity = stargazerFile.current_stargazers.map(item => ({
                     type: 'Star',

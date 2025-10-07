@@ -38,12 +38,11 @@ jobs:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           BOT_USER: ${{ vars.BOT_USER }}
 
-      - name: Commit and push updated stargazer state to tracker-data
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore: update stargazer/reciprocity state [bot]"
-          branch: tracker-data
-          file_pattern: .github/state/stargazer_state.json
+      - name: Create Release and Upload Asset
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh release create $(date +%Y-%m-%d) .github/state/stargazer_state.json --notes "Automated stargazer data release for $(date +%Y-%m-%d)" || echo "Release already exists, skipping creation."
 
       - name: Upload stargazer state as artifact
         uses: actions/upload-artifact@v4
