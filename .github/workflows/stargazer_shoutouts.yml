@@ -24,11 +24,25 @@ jobs:
         uses: actions/checkout@v4
         # No ref, defaults to branch that triggered the workflow (main)
 
-      - name: Fetch state file from tracker-data branch
+      - name: Checkout data repository
+        uses: actions/checkout@v4
+        with:
+          repository: SplashCodeDex/autogitgrow-data
+          path: data
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Copy data to data repository
         run: |
-          git fetch origin tracker-data:tracker-data
-          git checkout tracker-data -- .github/state/stars.json || true
-          git checkout ${{ github.ref_name }}
+          cp .github/state/stars.json data/
+
+      - name: Commit and push to data repository
+        run: |
+          cd data
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "chore: update stars data" || echo "No changes to commit"
+          git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
