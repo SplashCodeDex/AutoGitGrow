@@ -32,6 +32,28 @@ jobs:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           BOT_USER: ${{ vars.BOT_USER }}
 
+      - name: Initialize data repository if empty
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          REPO_URL="https://github.com/SplashCodeDex/autogitgrow-data.git"
+          BRANCH_EXISTS=$(git ls-remote --heads $REPO_URL main | wc -l)
+          if [ $BRANCH_EXISTS -eq 0 ]; then
+            echo "Data repository is empty or main branch does not exist. Initializing..."
+            git clone $REPO_URL data_init
+            cd data_init
+            git checkout -b main
+            mkdir -p .github/state
+            echo '{"current_stargazers": [], "mutual_stars": {}, "unstargazers": [], "reciprocity": {}, "top_repositories": []}' > .github/state/stargazer_state.json
+            git add .
+            git commit -m "Initial data repository setup" --allow-empty
+            git push -u origin main
+            cd ..
+            rm -rf data_init
+          else
+            echo "Data repository already initialized."
+          fi
+
       - name: Checkout data repository
         uses: actions/checkout@v4
         with:
