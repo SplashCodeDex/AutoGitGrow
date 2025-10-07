@@ -24,7 +24,8 @@ const placeholderActivityFeedData = [
 
 // --- API Helpers ---
 async function fetchFromGitHub(owner, repo) {
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/stargazer_state.json`;
+  const timestamp = new Date().getTime();
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/stargazer_state.json?_=${timestamp}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`);
