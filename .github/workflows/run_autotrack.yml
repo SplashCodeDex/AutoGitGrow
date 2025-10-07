@@ -16,12 +16,6 @@ jobs:
         with:
           ref: main
 
-      - name: Fetch stargazer state from tracker-data branch
-        run: |
-          git fetch origin tracker-data:tracker-data
-          mkdir -p .github/state/
-          git checkout tracker-data -- .github/state/stargazer_state.json || true
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
