@@ -26,13 +26,14 @@ const GeminiInsights = ({ stats, growthData, isDarkMode }) => {
         - Follow-backs Received: ${stats.followBacks}
         - Users Unfollowed: ${stats.unfollowed}
         - New Stargazers: ${stats.stargazers}
+        - Reciprocity Rate: ${stats.reciprocityRate}%
 
         Here is the follower growth data for the past week, showing total followers at the end of each day:
         ${growthData.map(d => `- ${d.name}: ${d.followers}`).join('\n')}
 
         Based on these stats and the growth trend, provide a concise, encouraging, and friendly summary (2-3 sentences max). 
         Start with a friendly greeting. 
-        Include one actionable suggestion for how the user could improve their GitHub presence or networking. The suggestion should be specific and relevant to the data provided. For example, if follower growth is stalling, suggest engaging with the community more. If there's a good growth trend, suggest how to maintain momentum.
+        Include two actionable suggestions for how the user could improve their GitHub presence or networking. The suggestions should be specific and relevant to the data provided. For example, if the reciprocity rate is low, suggest starring back more repositories. If follower growth is stalling, suggest engaging with the community more. If there's a good growth trend, suggest how to maintain momentum.
         Format the entire response as a single paragraph of plain text, without any markdown.
         End with a single, relevant emoji.
       `;

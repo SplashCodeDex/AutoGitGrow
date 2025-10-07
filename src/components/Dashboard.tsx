@@ -59,6 +59,8 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     time: new Date()
                 })).sort((a, b) => b.time - a.time);
 
+                const reciprocityRate = Math.round((Object.values(reciprocity).filter(r => r.starred_back.length > 0).length / Object.keys(reciprocity).length) * 100) || 0;
+
                 setDashboardData({
                     stats: {
                         followersGained: 0,
@@ -66,6 +68,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                         unfollowed: 0,
                         stargazers: current_stargazers.length,
                         unstargazers: unstargazers.length,
+                        reciprocityRate: reciprocityRate,
                     },
                     growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
@@ -132,6 +135,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                         <StatCard title="Users Unfollowed" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
                         <StatCard title="Unstargazers" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
                         <StatCard title="New Stargazers" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
+                        <StatCard title="Reciprocity Rate" value={`${stats.reciprocityRate}%`} icon={Users} color="text-blue-500 bg-blue-500" />
                     </>
                 )}
             </div>
