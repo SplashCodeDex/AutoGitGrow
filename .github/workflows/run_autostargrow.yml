@@ -21,11 +21,25 @@ jobs:
         with:
           ref: main
 
-      - name: Fetch state from tracker-data
+      - name: Checkout data repository
+        uses: actions/checkout@v4
+        with:
+          repository: SplashCodeDex/autogitgrow-data
+          path: data
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Copy data to data repository
         run: |
-          git fetch origin tracker-data:tracker-data
-          mkdir -p .github/state/
-          git checkout tracker-data -- .github/state/ || true
+          cp .github/state/stargazer_state.json data/
+
+      - name: Commit and push to data repository
+        run: |
+          cd data
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m "chore: update stargazer data" || echo "No changes to commit"
+          git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
