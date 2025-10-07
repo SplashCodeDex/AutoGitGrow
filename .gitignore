@@ -22,3 +22,31 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Bytecode and compiled files
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+
+# Testing and cache directories
+.pytest_cache
+
+# Operating system files
+Thumbs.db
+
+# Temporary and backup files
+*.bak
+*.swp
+*~
+
+# Environment variable files
+.env
+!.env.example
+.gitignore
+
+# Drafts and other files
+.github/state/
+
+# Only for local use
+scripts/unstar_nonreciprocals.py
