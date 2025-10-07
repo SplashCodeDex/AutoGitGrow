@@ -40,6 +40,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
         growthData: placeholderFollowerGrowthData,
         activityFeed: placeholderActivityFeedData,
         reciprocity: {},
+        topRepositories: [],
         loading: true,
         error: null,
     });
@@ -52,6 +53,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                 const current_stargazers = stargazerFile.current_stargazers || [];
                 const unstargazers = stargazerFile.unstargazers || [];
                 const reciprocity = stargazerFile.reciprocity || {};
+                const topRepositories = stargazerFile.top_repositories || [];
 
                 const parsedActivity = current_stargazers.map(item => ({
                     type: 'Star',
@@ -73,6 +75,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
                     activityFeed: parsedActivity,
                     reciprocity: reciprocity,
+                    topRepositories: topRepositories,
                     loading: false,
                     error: null,
                 });
@@ -91,7 +94,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
 
         fetchDashboardData();
     }, [repoOwner, repoName]);
-    const { stats, growthData, activityFeed, reciprocity, loading, error } = dashboardData;
+    const { stats, growthData, activityFeed, reciprocity, topRepositories, loading, error } = dashboardData;
 
     if (error) {
         return (
@@ -200,6 +203,35 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     {Object.entries(reciprocity).map(([username, data]) => (
                         <ReciprocityCard key={username} username={username} data={data} />
                     ))}
+                </div>
+            </div>
+            <div className="mt-8">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Top Repositories</h2>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
+                    <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">
+                                    Repository
+                                </th>
+                                <th scope="col" className="px-6 py-3">
+                                    Stargazers
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {topRepositories.map((repo, index) => (
+                                <tr key={index} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700">
+                                    <th scope="row" className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap dark:text-white">
+                                        {repo.name}
+                                    </th>
+                                    <td className="px-6 py-4">
+                                        {repo.stargazers_count}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
             {!loading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} isDarkMode={isDarkMode} /></div>}

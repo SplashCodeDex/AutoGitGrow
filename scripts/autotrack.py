@@ -91,6 +91,8 @@ def main():
     unstargazers = sorted(list(previous_stargazers - stargazer_set))
     print(f"Unstargazers detected: {len(unstargazers)}")
 
+    top_repositories = sorted([{"name": repo.full_name, "stargazers_count": repo.stargazers_count} for repo in repos], key=lambda r: r["stargazers_count"], reverse=True)
+
     # Save new state
     print("Saving new state ...")
     new_state = {
@@ -98,6 +100,7 @@ def main():
         "mutual_stars": mutual_stars,
         "unstargazers": unstargazers,
         "reciprocity": reciprocity,
+        "top_repositories": top_repositories,
     }
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(STATE_PATH, "w") as f:
