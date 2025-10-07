@@ -5,16 +5,16 @@ const ReciprocityCard = ({ username, data }) => {
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">{username}</h3>
             <div>
-                <h4 className="font-semibold">Starred By You:</h4>
-                <ul>
+                <h4 className="font-semibold text-green-500">Starred By You:</h4>
+                <ul className="text-green-500">
                     {data.starred_by.map((repo, index) => (
                         <li key={index}>{repo}</li>
                     ))}
                 </ul>
             </div>
             <div className="mt-4">
-                <h4 className="font-semibold">Starred Back:</h4>
-                <ul>
+                <h4 className="font-semibold text-blue-500">Starred Back:</h4>
+                <ul className="text-blue-500">
                     {data.starred_back.map((repo, index) => (
                         <li key={index}>{repo}</li>
                     ))}
