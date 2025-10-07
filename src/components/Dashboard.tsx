@@ -24,24 +24,12 @@ const placeholderActivityFeedData = [
 
 // --- API Helpers ---
 async function fetchFromGitHub(owner, repo) {
-  const releaseUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
-  const releaseResponse = await fetch(releaseUrl, {
-    headers: { 'User-Agent': 'AutoGitGrow-Dashboard' }
-  });
-  if (!releaseResponse.ok) {
-    throw new Error(`GitHub API error: ${releaseResponse.status} ${releaseResponse.statusText}`);
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/stargazer_state.json`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`);
   }
-  const releaseData = await releaseResponse.json();
-  const asset = releaseData.assets.find(asset => asset.name === 'stargazer_state.json');
-  if (!asset) {
-    throw new Error('stargazer_state.json not found in the latest release.');
-  }
-  const assetUrl = asset.browser_download_url;
-  const assetResponse = await fetch(assetUrl);
-  if (!assetResponse.ok) {
-    throw new Error(`Failed to download asset: ${assetResponse.status} ${assetResponse.statusText}`);
-  }
-  return await assetResponse.json();
+  return await response.json();
 }
 
 import ReciprocityCard from './ReciprocityCard';
@@ -59,7 +47,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const stargazerFile = await fetchFromGitHub(repoOwner, repoName);
+                const stargazerFile = await fetchFromGitHub('SplashCodeDex', 'autogitgrow-data');
 
                 const current_stargazers = stargazerFile.current_stargazers || [];
                 const unstargazers = stargazerFile.unstargazers || [];
