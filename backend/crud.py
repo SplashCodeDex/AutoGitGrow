@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
 
 def get_user_by_username(db: Session, username: str):
@@ -27,7 +27,7 @@ def get_stats(db: Session):
     return {"followers": followers, "unfollows": unfollows, "stars": stars, "unstars": unstars, "growth_stars": growth_stars}
 
 def get_events(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Event).offset(skip).limit(limit).all()
+    return db.query(models.Event).options(joinedload(models.Event.user)).offset(skip).limit(limit).all()
 
 def create_follower_history(db: Session, count: int):
     db_follower_history = models.FollowerHistory(timestamp=datetime.now(timezone.utc), count=count)

@@ -50,3 +50,9 @@ Thumbs.db
 
 # Only for local use
 scripts/unstar_nonreciprocals.py
+
+# New additions (should not be committed)
+.env
+public/stargazer_state.json
+sql_app.db
+config/follow_dates.json
