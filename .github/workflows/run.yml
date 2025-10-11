@@ -1,0 +1,52 @@
+# .github/workflows/run.yml
+name: GitGrow (Scheduled)
+
+on:
+  schedule:
+    - cron: '5 */1 * * *'     # every hour at minute 5 (UTC)
+  workflow_dispatch: {}      # allows manual triggering
+
+jobs:
+  run:
+    name: Run GitGrow Bot
+    if: github.actor == vars.BOT_USER || github.repository_owner == vars.BOT_USER
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate random follow batch size
+        run: python scripts/generate_batch_size.py
+
+      - name: Load batch size
+        uses: actions/upload-artifact@v2
+        with:
+          name: batch_size
+          path: batch_size.env
+
+      - name: Download batch size
+        uses: actions/download-artifact@v2
+        with:
+          name: batch_size
+
+      - name: Set batch size environment variable
+        run: echo "$(cat batch_size.env)" >> $GITHUB_ENV
+
+      - name: Run GitGrow bot
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          USERNAME_FILE: config/usernames.txt
+          WHITELIST_FILE: config/whitelist.txt
+          FOLLOWERS_PER_RUN: ${{ env.FOLLOWERS_PER_RUN }}
+        run: python scripts/gitgrow.py

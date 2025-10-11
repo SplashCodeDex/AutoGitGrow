@@ -66,6 +66,8 @@ The motto **“You only get what you give”** drives AutoGitGrow’s behavior:
 
 ## ✍️ A Note on Responsible Use
 
+**⚠️ IMPORTANT: This tool automates actions on your GitHub account. Excessive use can violate GitHub's Terms of Service and may lead to temporary or permanent suspension of your account. Use this tool at your own risk.**
+
 AutoGitGrow is designed to help you network organically, not to spam. Please use this tool responsibly. Automating interactions on GitHub may be against their Terms of Service. The creators of this tool are not responsible for any actions taken against your account. To stay safe:
 
 *   Keep the follow/unfollow frequencies at a reasonable level.
