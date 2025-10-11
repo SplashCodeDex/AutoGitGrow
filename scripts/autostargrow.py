@@ -4,14 +4,25 @@ import os
 import sys
 import json
 import random
+import requests
+import time
 from pathlib import Path
-from github import Github
+from github import Github, GithubException
 from datetime import datetime, timezone
 
 BOT_USER = os.getenv("BOT_USER")
 TOKEN = os.getenv("PAT_TOKEN")
-STATE_PATH = Path(".github/state/stargazer_state.json")
-USERNAMES_PATH = Path("config/usernames.txt")
+STATE_PATH = Path(__file__).parent.parent / "public" / "stargazer_state.json"
+USERNAMES_PATH = Path(__file__).parent.parent / "config" / "usernames.txt"
+
+def handle_rate_limit(gh):
+    """Pauses script execution until the GitHub API rate limit is reset."""
+    rate_limit = gh.get_rate_limit()
+    reset_time = rate_limit.core.reset.timestamp()
+    sleep_duration = max(0, reset_time - time.time())
+    if sleep_duration > 0:
+        print(f"[WARN] Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
+        time.sleep(sleep_duration)
 
 import argparse
 
@@ -20,6 +31,18 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
     parser.add_argument("--growth-sample", type=int, default=10, help="Number of new growth users to process per run")
     args = parser.parse_args()
+
+    def send_event(event_type, username):
+        """Sends an event to the backend."""
+        try:
+            response = requests.post(
+                "http://localhost:8000/events/",
+                params={"username": username},
+                json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Could not send event to backend: {e}")
 
     print("=== GitGrowBot autostargrow.py started ===")
 
@@ -35,40 +58,26 @@ def main():
 
     print("Authenticating with GitHub...")
     gh = Github(TOKEN)
-    try:
-        me = gh.get_user()
-        print(f"Authenticated as: {me.login}")
-    except Exception as e:
-        print("ERROR: Could not authenticate with GitHub:", e)
-        sys.exit(1)
-
-    # *** ONLY THIS BLOCK IS MODIFIED ***
-    if not STATE_PATH.exists():
-        print(f"ERROR: State file {STATE_PATH} not found. Did you forget to fetch tracker-data branch?", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Loading state from {STATE_PATH} ...")
-    with open(STATE_PATH) as f:
-        state = json.load(f)
-    growth_starred = state.get("growth_starred", {})
-    # *** END OF MODIFICATION ***
-
-    # Upgrade legacy entries to always use dict with 'repo' and 'starred_at'
-    changed = False
-    for user, entries in list(growth_starred.items()):
-        upgraded = []
-        for e in entries:
-            if isinstance(e, dict) and "repo" in e and "starred_at" in e:
-                upgraded.append(e)
-            elif isinstance(e, str):
-                upgraded.append({"repo": e, "starred_at": None})
-                changed = True
+    while True:
+        try:
+            me = gh.get_user()
+            print(f"Authenticated as: {me.login}")
+            break
+        except GithubException as e:
+            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                handle_rate_limit(gh)
             else:
-                # Any other legacy or corrupt entry
-                continue
-        if upgraded != entries:
-            growth_starred[user] = upgraded
-            changed = True
+                print("ERROR: Could not authenticate with GitHub:", e)
+                sys.exit(1)
+
+    if not STATE_PATH.exists():
+        print(f"State file {STATE_PATH} not found. Creating a new one.")
+        state = {}
+    else:
+        print(f"Loading state from {STATE_PATH} ...")
+        with open(STATE_PATH) as f:
+            state = json.load(f)
+    growth_starred = state.get("growth_starred", {})
 
     # Load candidate usernames for growth
     with open(USERNAMES_PATH) as f:
@@ -84,37 +93,43 @@ def main():
 
     for i, user in enumerate(sample):
         print(f"  [{i+1}/{len(sample)}] Growth star for user: {user}")
-        try:
-            u = gh.get_user(user)
-            repos = []
-            for repo in u.get_repos():
-                if not repo.fork and not repo.private:
-                    repos.append(repo)
-                if len(repos) >= 3:
+        while True:
+            try:
+                u = gh.get_user(user)
+                repos = [r for r in u.get_repos(type='owner') if not r.fork][:3]
+                if not repos:
+                    print(f"    No public repos to star for {user}, skipping.")
                     break
-            if not repos:
-                print(f"    No public repos to star for {user}, skipping.")
-                continue
-            repo = random.choice(repos)
-            print(f"    Starring repo: {repo.full_name}")
-            if not args.dry_run:
-                me.add_to_starred(repo)
-            growth_starred.setdefault(user, [])
-            growth_starred[user].append({
-                "repo": repo.full_name,
-                "starred_at": now_iso
-            })
-            changed = True
-            print(f"    Growth: Starred {repo.full_name} for {user} at {now_iso}")
-        except Exception as e:
-            print(f"    Failed to star for growth {user}: {e}")
+                repo = random.choice(repos)
+                print(f"    Starring repo: {repo.full_name}")
+                if not args.dry_run:
+                    me.add_to_starred(repo)
+                    time.sleep(random.uniform(1, 3))  # Add a random delay
+                growth_starred.setdefault(user, [])
+                growth_starred[user].append({
+                    "repo": repo.full_name,
+                    "starred_at": now_iso
+                })
+                if not args.dry_run:
+                    send_event("growth_star", user)
+                print(f"    Growth: Starred {repo.full_name} for {user} at {now_iso}")
+                break
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(gh)
+                else:
+                    print(f"    Failed to star for growth {user}: {e}")
+                    break
 
     # Save updated growth_starred to state file
-    print(f"Saving updated growth_starred to {STATE_PATH} ...")
-    state["growth_starred"] = growth_starred
-    with open(STATE_PATH, "w") as f:
-        json.dump(state, f, indent=2)
-    print(f"Updated growth_starred written to {STATE_PATH}")
+    if not args.dry_run:
+        print(f"Saving updated growth_starred to {STATE_PATH} ...")
+        state["growth_starred"] = growth_starred
+        with open(STATE_PATH, "w") as f:
+            json.dump(state, f, indent=2)
+        print(f"Updated growth_starred written to {STATE_PATH}")
+    else:
+        print("Dry run, not saving state.")
 
     print("=== GitGrowBot autostargrow.py finished ===")
 

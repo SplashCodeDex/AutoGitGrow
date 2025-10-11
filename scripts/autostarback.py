@@ -3,20 +3,44 @@
 import os
 import sys
 import json
+import random
+import requests
 from pathlib import Path
-from github import Github
-from datetime import datetime, timezone
+from github import Github, GithubException
 
 TOKEN = os.getenv("PAT_TOKEN")
 BOT_USER = os.getenv("BOT_USER")
-STATE_PATH = Path(".github/state/stargazer_state.json")
+# Construct path relative to the script's parent directory
+STATE_PATH = Path(__file__).parent.parent / "public" / "stargazer_state.json"
 
 import argparse
+import time
+
+def handle_rate_limit(gh):
+    """Pauses script execution until the GitHub API rate limit is reset."""
+    rate_limit = gh.get_rate_limit()
+    reset_time = rate_limit.core.reset.timestamp()
+    sleep_duration = max(0, reset_time - time.time())
+    if sleep_duration > 0:
+        print(f"[WARN] Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
+        time.sleep(sleep_duration)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
     args = parser.parse_args()
+
+    def send_event(event_type, username):
+        """Sends an event to the backend."""
+        try:
+            response = requests.post(
+                "http://localhost:8000/events/",
+                params={"username": username},
+                json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Could not send event to backend: {e}")
 
     print("==== [START] autostarback.py ====")
     print(f"ENV: TOKEN={'SET' if TOKEN else 'UNSET'} BOT_USER={BOT_USER}")
@@ -55,44 +79,49 @@ def main():
         print(f"\n[autostarback] Processing user [{user_idx}/{len(current_stargazers)}]: {user}")
         print(f"    starred_by={needed} starred_back={current}")
 
-        try:
-            u = gh.get_user(user)
-            user_repos = []
-            for r in u.get_repos():
-                if r.fork or r.private:
-                    continue
-                user_repos.append(r)
-                if len(user_repos) == needed:
-                    break
-            user_repo_names = [r.full_name for r in user_repos]
-            max_possible = len(user_repo_names)
+        while True:
+            try:
+                u = gh.get_user(user)
+                user_repos = [r for r in u.get_repos(type='owner') if not r.fork][:needed]
+                max_possible = len(user_repos)
 
-            # If all possible repos are already starred, but still unbalanced, log the attempt with timestamp
-            if needed > max_possible and current >= max_possible:
-                print(f"[autostarback] Cannot match reciprocity for {user} (starred_by={needed}, user has only {max_possible} repos). Logging unbalanced attempt.")
-                reciprocity[user]["last_unbalanced_attempt"] = now_iso
-                changed = True
-                continue
-
-            # Star more of their repos if needed, up to the max possible
-            while len(starred_back) < needed and len(user_repo_names) > len(starred_back):
-                repo_name = user_repo_names[len(starred_back)]
-                print(f"[autostarback] Starring {repo_name} for {user} (to match count)")
-                try:
-                    if not args.dry_run:
-                        repo = gh.get_repo(repo_name)
-                        me.add_to_starred(repo)
-                    starred_back.append(repo_name)
+                # If all possible repos are already starred, but still unbalanced, log the attempt with timestamp
+                if needed > max_possible and current >= max_possible:
+                    print(f"[autostarback] Cannot match reciprocity for {user} (starred_by={needed}, user has only {max_possible} repos). Logging unbalanced attempt.")
+                    reciprocity[user]["last_unbalanced_attempt"] = now_iso
                     changed = True
-                except Exception as err:
-                    print(f"[autostarback] ERROR: Failed to star {repo_name} for {user}: {err}")
                     break
 
-            print(f"[autostarback] Final: {user}: user_starred_yours={needed}, you_starred_theirs={len(starred_back)}")
-            reciprocity[user]["starred_back"] = starred_back
+                # Star more of their repos if needed, up to the max possible
+                while len(starred_back) < needed and len(user_repos) > len(starred_back):
+                    repo = user_repos[len(starred_back)]
+                    if not args.dry_run:
+                        send_event("star", user)
+                    print(f"[autostarback] Starring {repo.full_name} for {user} (to match count)")
+                    try:
+                        if not args.dry_run:
+                            me.add_to_starred(repo)
+                            time.sleep(random.uniform(1, 3))  # Add a random delay
+                        starred_back.append(repo.full_name)
+                        changed = True
+                    except GithubException as err:
+                        if err.status == 403 and 'rate limit exceeded' in err.data['message']:
+                            handle_rate_limit(gh)
+                            continue # Retry starring the same repo
+                        else:
+                            print(f"[autostarback] ERROR: Failed to star {repo.full_name} for {user}: {err}")
+                            break # Break from the inner while loop
 
-        except Exception as e:
-            print(f"[autostarback] ERROR processing {user}: {e}")
+                print(f"[autostarback] Final: {user}: user_starred_yours={needed}, you_starred_theirs={len(starred_back)}")
+                reciprocity[user]["starred_back"] = starred_back
+                break # Break from the outer while loop
+
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(gh)
+                else:
+                    print(f"[autostarback] ERROR processing {user}: {e}")
+                    break
 
     # Write updated state (reciprocity only; autotrack will always overwrite on next run)
     if changed:

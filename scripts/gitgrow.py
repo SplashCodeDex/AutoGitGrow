@@ -3,11 +3,45 @@ import os
 import sys
 import json
 import random
+import requests
 from pathlib import Path
 from github import Github, GithubException
 from datetime import datetime, timedelta, timezone
 
 import argparse
+import time
+
+def handle_rate_limit(gh):
+    """Pauses script execution until the GitHub API rate limit is reset."""
+    rate_limit = gh.get_rate_limit()
+    reset_time = rate_limit.core.reset.timestamp()
+    sleep_duration = max(0, reset_time - time.time())
+    if sleep_duration > 0:
+        print(f"[WARN] Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
+        time.sleep(sleep_duration)
+
+def send_event(event_type, username):
+    """Sends an event to the backend."""
+    try:
+        response = requests.post(
+            "http://localhost:8000/events/",
+            params={"username": username},
+            json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Could not send event to backend: {e}")
+
+def record_follower_count(count):
+    """Records the current follower count to the backend."""
+    try:
+        response = requests.post(
+            "http://localhost:8000/api/follower-history/",
+            params={"count": count},
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Could not record follower count to backend: {e}")
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
@@ -42,30 +76,25 @@ def main(argv=None):
     else:
         follow_dates = {}
 
-    # — Load candidate usernames in chunks —
+    # — Load a random sample of candidate usernames —
     if not user_path.exists():
-        sys.exit(f"Username file not found: {user_path}")  # Exit if usernames file is not found
+        sys.exit(f"Username file not found: {user_path}")
 
-    candidates = []
     with user_path.open() as f:
-        chunk = []
-        for line in f:
-            chunk.append(line.strip())
-            if len(chunk) == 1000:
-                candidates.extend(chunk)
-                chunk = []
-        if chunk:
-            candidates.extend(chunk)
+        lines = f.readlines()
+    candidates = [line.strip() for line in random.sample(lines, min(len(lines), 1000))]
 
     # — Fetch current following and followers lists with pagination —
-    try:
-        following = {u.login.lower(): u for u in me.get_following()}
-        followers = {u.login.lower() for u in me.get_followers()}
-    except GithubException as e:
-        if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-            print(f"[ERROR] Rate limit exceeded. Please wait before running the script again.")
-            sys.exit(1)
-        sys.exit(f"[ERROR] fetching follow lists: {e}")
+    while True:
+        try:
+            following = {u.login.lower(): u for u in me.get_following()}
+            followers = {u.login.lower() for u in me.get_followers()}
+            break
+        except GithubException as e:
+            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                handle_rate_limit(gh)
+            else:
+                sys.exit(f"[ERROR] fetching follow lists: {e}")
 
     # --- STEP 1: Unfollow non-reciprocal users ---
     to_unfollow = []
@@ -80,18 +109,23 @@ def main(argv=None):
     unfollowed_count = 0
     for login in to_unfollow:
         user = following[login]
-        try:
-            if not args.dry_run:
-                me.remove_from_following(user)
-            unfollowed_count += 1
-            print(f"[UNFOLLOWED] {login}")
-            if login in follow_dates:
-                del follow_dates[login]
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                print(f"[ERROR] Rate limit exceeded during unfollow. Please wait before running the script again.")
+        while True:
+            try:
+                if not args.dry_run:
+                    me.remove_from_following(user)
+                    time.sleep(random.uniform(1, 3))  # Add a random delay
+                unfollowed_count += 1
+                send_event("unfollow", login)
+                print(f"[UNFOLLOWED] {login}")
+                if login in follow_dates:
+                    del follow_dates[login]
                 break
-            print(f"[ERROR] could not unfollow {login}: {e}")
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(gh)
+                else:
+                    print(f"[ERROR] could not unfollow {login}: {e}")
+                    break
 
     print(f"Done unfollow phase: {unfollowed_count} unfollowed.")
 
@@ -121,35 +155,43 @@ def main(argv=None):
             continue
 
         try:
-            events = user.get_events()
-            recent_events = 0
-            for event in events:
-                if event.created_at > datetime.now(timezone.utc) - timedelta(days=30):
-                    recent_events += 1
-                else:
+            all_events = user.get_events()
+            recent_events_count = 0
+            events_processed = 0
+            for event in all_events:
+                if events_processed >= 30: # Process at most 30 events
                     break
-            if recent_events < 5:
-                print(f"[SKIP] {login} inactive (events in last 30 days: {recent_events})")
+                if event.created_at > datetime.now(timezone.utc) - timedelta(days=30):
+                    recent_events_count += 1
+                events_processed += 1
+            
+            if recent_events_count < 5:
+                print(f"[SKIP] {login} inactive (events in last 30 days: {recent_events_count})")
                 continue
         except GithubException as e:
             print(f"[WARN] could not fetch events for {login}, skipping: {e}")
             continue
 
-        try:
-            if not args.dry_run:
-                me.add_to_following(user)
-            new_followed += 1
-            follow_dates[login] = datetime.now(timezone.utc).isoformat()
-            print(f"[FOLLOWED] {login} ({new_followed}/{per_run})")
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                print(f"[ERROR] Rate limit exceeded during follow. Please wait before running the script again.")
+        while True:
+            try:
+                if not args.dry_run:
+                    me.add_to_following(user)
+                    time.sleep(random.uniform(1, 3))  # Add a random delay
+                new_followed += 1
+                follow_dates[login] = datetime.now(timezone.utc).isoformat()
+                send_event("follow", login)
+                print(f"[FOLLOWED] {login} ({new_followed}/{per_run})")
                 break
-            if getattr(e, "status", None) == 403:
-                private_new.append(login)
-                print(f"[PRIVATE] cannot follow {login}: {e}")
-            else:
-                print(f"[ERROR] follow {login}: {e}")
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(gh)
+                elif getattr(e, "status", None) == 403:
+                    private_new.append(login)
+                    print(f"[PRIVATE] cannot follow {login}: {e}")
+                    break
+                else:
+                    print(f"[ERROR] follow {login}: {e}")
+                    break
 
     print(f"Done follow phase: {new_followed}/{per_run} followed.")
     if notfound_new:
@@ -161,25 +203,31 @@ def main(argv=None):
     back_count  = 0
     private_back = []
 
-    for login, user in followers.items():
+    for login in followers:
         ll = login.lower()
         if ll == me.login.lower() or ll in whitelist or ll in following:
             continue
-        try:
-            if not args.dry_run:
-                me.add_to_following(user)
-            back_count += 1
-            follow_dates[login] = datetime.now(timezone.utc).isoformat()
-            print(f"[FOLLOW-BACKED] {login}")
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                print(f"[ERROR] Rate limit exceeded during follow-back. Please wait before running the script again.")
+        while True:
+            try:
+                user = gh.get_user(login)
+                if not args.dry_run:
+                    me.add_to_following(user)
+                    time.sleep(random.uniform(1, 3))  # Add a random delay
+                back_count += 1
+                follow_dates[login] = datetime.now(timezone.utc).isoformat()
+                send_event("follow-back", login)
+                print(f"[FOLLOW-BACKED] {login}")
                 break
-            if getattr(e, "status", None) == 403:
-                private_back.append(login)
-                print(f"[PRIVATE] cannot follow-back {login}: {e}")
-            else:
-                print(f"[ERROR] follow-back {login}: {e}")
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(gh)
+                elif getattr(e, "status", None) == 403:
+                    private_back.append(login)
+                    print(f"[PRIVATE] cannot follow-back {login}: {e}")
+                    break
+                else:
+                    print(f"[ERROR] follow-back {login}: {e}")
+                    break
 
     print(f"Done follow-back phase: {back_count} followed-back.")
     if private_back:
@@ -188,6 +236,8 @@ def main(argv=None):
     # — Save follow dates —
     with follow_dates_path.open("w") as f:
         json.dump(follow_dates, f, indent=2)
+
+    record_follower_count(me.followers)
 
 if __name__ == "__main__":
     main()
