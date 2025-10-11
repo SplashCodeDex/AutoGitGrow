@@ -1,0 +1,181 @@
+{
+  "current_stargazers": [
+    "Ashnice",
+    "MuradIsazade777",
+    "SplashCodeDex",
+    "ahnshy",
+    "djonmaila",
+    "ikramagix"
+  ],
+  "mutual_stars": {},
+  "unstargazers": [],
+  "reciprocity": {
+    "djonmaila": {
+      "starred_by": [
+        "SplashCodeDex/Auto-Hotspot",
+        "SplashCodeDex/AutoGitGrow",
+        "SplashCodeDex/DeXDo",
+        "SplashCodeDex/Momo_Merchants_App",
+        "SplashCodeDex/network_tools",
+        "SplashCodeDex/PlanMyLife",
+        "SplashCodeDex/SplashCodeDeX",
+        "SplashCodeDex/TACTMS",
+        "SplashCodeDex/Unlimited-Cloud-VM-Storage",
+        "SplashCodeDex/VisualNoteX",
+        "SplashCodeDex/WeGoAgain",
+        "SplashCodeDex/WhatsDeX"
+      ],
+      "starred_back": []
+    },
+    "ahnshy": {
+      "starred_by": [
+        "SplashCodeDex/AutoGitGrow",
+        "SplashCodeDex/DeXDo",
+        "SplashCodeDex/Momo_Merchants_App",
+        "SplashCodeDex/TACTMS",
+        "SplashCodeDex/VisualNoteX",
+        "SplashCodeDex/WhatsDeX"
+      ],
+      "starred_back": []
+    },
+    "ikramagix": {
+      "starred_by": [
+        "SplashCodeDex/Momo_Merchants_App"
+      ],
+      "starred_back": []
+    },
+    "SplashCodeDex": {
+      "starred_by": [
+        "SplashCodeDex/PlanMyLife",
+        "SplashCodeDex/SplashCodeDeX",
+        "SplashCodeDex/TACTMS",
+        "SplashCodeDex/Unlimited-Cloud-VM-Storage",
+        "SplashCodeDex/VisualNoteX",
+        "SplashCodeDex/WhatsDeX"
+      ],
+      "starred_back": [
+        "SplashCodeDex/Unlimited-Cloud-VM-Storage",
+        "SplashCodeDex/AlterEgo-AI",
+        "SplashCodeDex/SplashCodeDeX",
+        "SplashCodeDex/TACTMS",
+        "SplashCodeDex/VisualNoteX",
+        "SplashCodeDex/WhatsDeX",
+        "SplashCodeDex/PlanMyLife"
+      ]
+    },
+    "MuradIsazade777": {
+      "starred_by": [
+        "SplashCodeDex/SplashCodeDeX"
+      ],
+      "starred_back": []
+    },
+    "Ashnice": {
+      "starred_by": [
+        "SplashCodeDex/VisualNoteX"
+      ],
+      "starred_back": []
+    }
+  },
+  "top_repositories": [
+    {
+      "name": "SplashCodeDex/VisualNoteX",
+      "stargazers_count": 4
+    },
+    {
+      "name": "SplashCodeDex/Momo_Merchants_App",
+      "stargazers_count": 3
+    },
+    {
+      "name": "SplashCodeDex/SplashCodeDeX",
+      "stargazers_count": 3
+    },
+    {
+      "name": "SplashCodeDex/TACTMS",
+      "stargazers_count": 3
+    },
+    {
+      "name": "SplashCodeDex/WhatsDeX",
+      "stargazers_count": 3
+    },
+    {
+      "name": "SplashCodeDex/AutoGitGrow",
+      "stargazers_count": 2
+    },
+    {
+      "name": "SplashCodeDex/DeXDo",
+      "stargazers_count": 2
+    },
+    {
+      "name": "SplashCodeDex/PlanMyLife",
+      "stargazers_count": 2
+    },
+    {
+      "name": "SplashCodeDex/Unlimited-Cloud-VM-Storage",
+      "stargazers_count": 2
+    },
+    {
+      "name": "SplashCodeDex/Auto-Hotspot",
+      "stargazers_count": 1
+    },
+    {
+      "name": "SplashCodeDex/network_tools",
+      "stargazers_count": 1
+    },
+    {
+      "name": "SplashCodeDex/WeGoAgain",
+      "stargazers_count": 1
+    }
+  ],
+  "suggested_users": [
+    "BerkeleyTrue",
+    "maheshsundaram",
+    "bubencode",
+    "serkanh",
+    "ksharifbd",
+    "artificemm",
+    "ertuncefeoglu",
+    "iancmason",
+    "adamnemecek",
+    "sleepy-cat",
+    "tooqinc",
+    "levonk",
+    "kaplejon",
+    "zachshallbetter",
+    "notnorth",
+    "robertmarsal",
+    "lvnilesh",
+    "jakblak",
+    "holyxiaoxin",
+    "sibbl",
+    "tariqbuilds",
+    "N0FJ",
+    "tioteath",
+    "mrsmartpants",
+    "pmaingi",
+    "johncipponeri",
+    "Ting-y",
+    "twoflowers",
+    "Swelly",
+    "pabloangeletti",
+    "binocarlos",
+    "jinpark",
+    "rmelfi",
+    "wonk",
+    "Wynda",
+    "ciromattia",
+    "Phonbopit",
+    "courselogic",
+    "edsloan",
+    "brandenbyers",
+    "Monster52",
+    "jasonbraun",
+    "jakecleary",
+    "clasense4",
+    "sax1johno",
+    "CodeNonprofit",
+    "Chris2Brooks",
+    "binury",
+    "alex-dixon",
+    "jalbertbowden"
+  ]
+}

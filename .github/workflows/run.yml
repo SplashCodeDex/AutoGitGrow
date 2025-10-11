@@ -11,6 +11,8 @@ jobs:
     name: Run GitGrow Bot
     if: github.actor == vars.BOT_USER || github.repository_owner == vars.BOT_USER
     runs-on: ubuntu-latest
+    env:
+      BOT_USER: ${{ vars.BOT_USER }}
 
     steps:
       - name: Checkout repository
@@ -27,21 +29,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Generate random follow batch size
-        run: python scripts/generate_batch_size.py
-
-      - name: Load batch size
-        uses: actions/upload-artifact@v2
-        with:
-          name: batch_size
-          path: batch_size.env
-
-      - name: Download batch size
-        uses: actions/download-artifact@v2
-        with:
-          name: batch_size
-
-      - name: Set batch size environment variable
-        run: echo "$(cat batch_size.env)" >> $GITHUB_ENV
+        run: python scripts/generate_batch_size.py >> $GITHUB_ENV
 
       - name: Run GitGrow bot
         env:

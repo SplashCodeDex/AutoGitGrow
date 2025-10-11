@@ -13,6 +13,7 @@ const placeholderStatsData = {
   followBacks: 0,
   unfollowed: 0,
   stargazers: 0,
+  growth_stars: 0,
 };
 
 const placeholderFollowerGrowthData = Array.from({ length: 7 }, (_, i) => ({ name: `Day ${i + 1}`, followers: 0 }));
@@ -21,23 +22,11 @@ const placeholderActivityFeedData = [
     { type: 'Info', target: 'Waiting for first bot run...', time: new Date() },
 ];
 
-
-// --- API Helpers ---
-async function fetchFromGitHub(owner, repo) {
-  const timestamp = new Date().getTime();
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/stargazer_state.json?_=${timestamp}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download asset: ${response.status} ${response.statusText}`);
-  }
-  return await response.json();
-}
-
 import ReciprocityCard from './ReciprocityCard';
 
-const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
+const Dashboard = ({ isDarkMode }) => {
     const [dashboardData, setDashboardData] = useState({
-        stats: placeholderStatsData,
+        stats: { ...placeholderStatsData, growth_stars: 0 },
         growthData: placeholderFollowerGrowthData,
         activityFeed: placeholderActivityFeedData,
         reciprocity: {},
@@ -50,39 +39,48 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const stargazerFile = await fetchFromGitHub('SplashCodeDex', 'autogitgrow-data');
+                const [statsResponse, activityFeedResponse, followerGrowthResponse] = await Promise.all([
+                    fetch('/api/stats'),
+                    fetch('/api/activity-feed'),
+                    fetch('/api/follower-growth'),
+                ]);
 
-                const current_stargazers = stargazerFile.current_stargazers || [];
-                const unstargazers = stargazerFile.unstargazers || [];
-                const reciprocity = stargazerFile.reciprocity || {};
-                const topRepositories = stargazerFile.top_repositories || [];
-                const suggestedUsers = stargazerFile.suggested_users || [];
+                if (!statsResponse.ok) throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`);
+                if (!activityFeedResponse.ok) throw new Error(`Failed to fetch activity feed: ${activityFeedResponse.statusText}`);
+                if (!followerGrowthResponse.ok) throw new Error(`Failed to fetch follower growth: ${followerGrowthResponse.statusText}`);
 
-                const parsedActivity = current_stargazers.map(item => ({
-                    type: 'Star',
-                    target: item,
-                    time: new Date()
-                })).sort((a, b) => b.time - a.time);
+                const stats = await statsResponse.json();
+                const activityFeed = await activityFeedResponse.json();
+                const followerGrowth = await followerGrowthResponse.json();
 
-                const reciprocityRate = Math.round((Object.values(reciprocity).filter(r => r.starred_back.length > 0).length / Object.keys(reciprocity).length) * 100) || 0;
+                const parsedActivity = activityFeed.map(item => ({
+                    type: item.event_type,
+                    target: item.user.username,
+                    time: new Date(item.timestamp)
+                })).sort((a, b) => b.time.getTime() - a.time.getTime());
+
+                const growthData = followerGrowth.map(item => ({
+                    name: new Date(item.timestamp).toLocaleDateString(),
+                    followers: item.count,
+                }));
 
                 setDashboardData({
                     stats: {
-                        followersGained: 0,
-                        followBacks: 0,
-                        unfollowed: 0,
-                        stargazers: current_stargazers.length,
-                        unstargazers: unstargazers.length,
-                        reciprocityRate: reciprocityRate,
+                        followersGained: stats.followers,
+                        followBacks: 0, // This data is not yet available from the backend
+                        unfollowed: stats.unfollows,
+                        stargazers: stats.stars,
+                        unstargazers: stats.unstars,
+                        reciprocityRate: 0, // This data is not yet available from the backend
                     },
-                    growthData: placeholderFollowerGrowthData, // Placeholder as this data is not in the new source
+                    growthData: growthData,
                     activityFeed: parsedActivity,
-                    reciprocity: reciprocity,
-                    topRepositories: topRepositories,
-                    suggestedUsers: suggestedUsers,
+                    reciprocity: {}, // This data is not yet available from the backend
+                    topRepositories: [], // This data is not yet available from the backend
+                    suggestedUsers: [], // This data is not yet available from the backend
                     loading: false,
                     error: null,
-                });
+                } as any);
 
             } catch (e) {
                 console.error("Failed to fetch dashboard data:", e);
@@ -90,6 +88,9 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     stats: placeholderStatsData,
                     growthData: placeholderFollowerGrowthData,
                     activityFeed: placeholderActivityFeedData,
+                    reciprocity: {},
+                    topRepositories: [],
+                    suggestedUsers: [],
                     loading: false,
                     error: e.message,
                 });
@@ -97,7 +98,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
         };
 
         fetchDashboardData();
-    }, [repoOwner, repoName]);
+    }, []);
     const { stats, growthData, activityFeed, reciprocity, topRepositories, suggestedUsers, loading, error } = dashboardData;
 
     if (error) {
@@ -137,12 +138,11 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                     </>
                 ) : (
                     <>
-                        <StatCard title="Followers Gained" value={stats.followersGained} icon={UserPlus} color="text-green-500 bg-green-500" />
-                        <StatCard title="Follow-backs Received" value={stats.followBacks} icon={Users} color="text-blue-500 bg-blue-500" />
-                        <StatCard title="Users Unfollowed" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
-                        <StatCard title="Unstargazers" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
-                        <StatCard title="New Stargazers" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
-                        <StatCard title="Reciprocity Rate" value={`${stats.reciprocityRate}%`} icon={Users} color="text-blue-500 bg-blue-500" />
+                        <StatCard title="Follows" value={stats.followersGained} icon={UserPlus} color="text-green-500 bg-green-500" />
+                        <StatCard title="Unfollows" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Stars" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
+                        <StatCard title="Unstars" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Growth Stars" value={stats.growth_stars} icon={Star} color="text-purple-500 bg-purple-500" />
                     </>
                 )}
             </div>
@@ -194,6 +194,7 @@ const Dashboard = ({ isDarkMode, repoOwner, repoName }) => {
                                     <span className="font-semibold">{item.type}:</span> <a href={`https://github.com/${item.target}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.target}</a>
                                     </p>
                                     <p className="text-slate-500 dark:text-slate-500 text-xs">{formatDistanceToNow(item.time, { addSuffix: true })}</p>
+
                                 </div>
                             </li>
                         );
