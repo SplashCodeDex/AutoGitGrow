@@ -20,13 +20,38 @@ def handle_rate_limit(gh):
         print(f"[WARN] Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
         time.sleep(sleep_duration)
 
-def send_event(event_type, username):
+def send_event(event_type, source_username, target_username, repository_name=None):
     """Sends an event to the backend."""
     try:
+        # Get user_id for source_username
+        source_user_id = None
+        if source_username:
+            response = requests.get(f"http://localhost:8000/users/{source_username}")
+            if response.status_code == 200:
+                source_user_id = response.json()["id"]
+            else:
+                print(f"[WARN] Could not get user_id for source_username {source_username}: {response.status_code}")
+
+        # Get user_id for target_username
+        target_user_id = None
+        if target_username:
+            response = requests.get(f"http://localhost:8000/users/{target_username}")
+            if response.status_code == 200:
+                target_user_id = response.json()["id"]
+            else:
+                print(f"[WARN] Could not get user_id for target_username {target_username}: {response.status_code}")
+
+        payload = {
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source_user_id": source_user_id,
+            "target_user_id": target_user_id,
+            "repository_name": repository_name,
+        }
+
         response = requests.post(
             "http://localhost:8000/events/",
-            params={"username": username},
-            json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
+            json=payload,
         )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
@@ -115,7 +140,7 @@ def main(argv=None):
                     me.remove_from_following(user)
                     time.sleep(random.uniform(1, 3))  # Add a random delay
                 unfollowed_count += 1
-                send_event("unfollow", login)
+                send_event("unfollow", me.login, login)
                 print(f"[UNFOLLOWED] {login}")
                 if login in follow_dates:
                     del follow_dates[login]
@@ -179,7 +204,7 @@ def main(argv=None):
                     time.sleep(random.uniform(1, 3))  # Add a random delay
                 new_followed += 1
                 follow_dates[login] = datetime.now(timezone.utc).isoformat()
-                send_event("follow", login)
+                send_event("follow", me.login, login)
                 print(f"[FOLLOWED] {login} ({new_followed}/{per_run})")
                 break
             except GithubException as e:
@@ -215,7 +240,7 @@ def main(argv=None):
                     time.sleep(random.uniform(1, 3))  # Add a random delay
                 back_count += 1
                 follow_dates[login] = datetime.now(timezone.utc).isoformat()
-                send_event("follow-back", login)
+                send_event("follow-back", me.login, login)
                 print(f"[FOLLOW-BACKED] {login}")
                 break
             except GithubException as e:

@@ -10,5 +10,6 @@ pkgs.mkShell {
     python3Packages.uvicorn
     python3Packages.sqlalchemy
     python3Packages.pydantic
+    python3Packages.python-dotenv
   ];
 }

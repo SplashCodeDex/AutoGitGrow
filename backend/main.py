@@ -1,6 +1,9 @@
 from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
@@ -19,11 +22,8 @@ def get_db():
 
 
 @app.post("/events/", response_model=schemas.Event)
-def create_event_for_user(username: str, event: schemas.EventCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_username(db, username=username)
-    if db_user is None:
-        db_user = crud.create_user(db, user=schemas.UserCreate(username=username))
-    return crud.create_event(db=db, event=event, user_id=db_user.id)
+def create_event_for_user(event: schemas.EventCreate, db: Session = Depends(get_db)):
+    return crud.create_event(db=db, event=event, source_user_id=event.source_user_id, target_user_id=event.target_user_id, repository_name=event.repository_name)
 
 
 @app.get("/users/{username}", response_model=schemas.User)

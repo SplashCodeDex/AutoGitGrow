@@ -18,14 +18,17 @@ User.update_forward_refs()
 class EventBase(BaseModel):
     event_type: str
     timestamp: datetime
+    source_user_id: Optional[int] = None
+    target_user_id: Optional[int] = None
+    repository_name: Optional[str] = None
 
 class EventCreate(EventBase):
     pass
 
 class Event(EventBase):
     id: int
-    user_id: int
-    user: User # Add this line to include the User object
+    source_user: Optional[User] = None
+    target_user: Optional[User] = None
 
     class Config:
         orm_mode = True

@@ -14,6 +14,8 @@ const placeholderStatsData = {
   unfollowed: 0,
   stargazers: 0,
   growth_stars: 0,
+  reciprocityRate: 0,
+  topRepositories: [],
 };
 
 const placeholderFollowerGrowthData = Array.from({ length: 7 }, (_, i) => ({ name: `Day ${i + 1}`, followers: 0 }));
@@ -53,11 +55,21 @@ const Dashboard = ({ isDarkMode }) => {
                 const activityFeed = await activityFeedResponse.json();
                 const followerGrowth = await followerGrowthResponse.json();
 
-                const parsedActivity = activityFeed.map(item => ({
-                    type: item.event_type,
-                    target: item.user.username,
-                    time: new Date(item.timestamp)
-                })).sort((a, b) => b.time.getTime() - a.time.getTime());
+                const parsedActivity = activityFeed.map(item => {
+                    let targetUsername = 'Unknown';
+                    if (item.event_type === 'follow' || item.event_type === 'unfollow') {
+                        targetUsername = item.target_user?.username || 'Unknown';
+                    } else if (item.event_type === 'star' || item.event_type === 'unstar') {
+                        targetUsername = item.source_user?.username || 'Unknown';
+                    } else if (item.event_type === 'followed_by') {
+                        targetUsername = item.source_user?.username || 'Unknown';
+                    }
+                    return {
+                        type: item.event_type,
+                        target: targetUsername,
+                        time: new Date(item.timestamp)
+                    };
+                }).sort((a, b) => b.time.getTime() - a.time.getTime());
 
                 const growthData = followerGrowth.map(item => ({
                     name: new Date(item.timestamp).toLocaleDateString(),
@@ -67,17 +79,18 @@ const Dashboard = ({ isDarkMode }) => {
                 setDashboardData({
                     stats: {
                         followersGained: stats.followers,
-                        followBacks: 0, // This data is not yet available from the backend
+                        followBacks: stats.follow_backs,
                         unfollowed: stats.unfollows,
                         stargazers: stats.stars,
                         unstargazers: stats.unstars,
-                        reciprocityRate: 0, // This data is not yet available from the backend
+                        reciprocityRate: stats.reciprocity_rate,
+                        growth_stars: stats.growth_stars,
                     },
                     growthData: growthData,
                     activityFeed: parsedActivity,
                     reciprocity: {}, // This data is not yet available from the backend
-                    topRepositories: [], // This data is not yet available from the backend
-                    suggestedUsers: [], // This data is not yet available from the backend
+                    topRepositories: stats.top_repositories,
+                    suggestedUsers: stats.suggested_users,
                     loading: false,
                     error: null,
                 } as any);
@@ -142,6 +155,8 @@ const Dashboard = ({ isDarkMode }) => {
                         <StatCard title="Unfollows" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
                         <StatCard title="Stars" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
                         <StatCard title="Unstars" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Follow Backs" value={stats.followBacks} icon={Users} color="text-blue-500 bg-blue-500" />
+                        <StatCard title="Reciprocity Rate" value={`${stats.reciprocityRate.toFixed(2)}%`} icon={Users} color="text-purple-500 bg-purple-500" />
                         <StatCard title="Growth Stars" value={stats.growth_stars} icon={Star} color="text-purple-500 bg-purple-500" />
                     </>
                 )}
