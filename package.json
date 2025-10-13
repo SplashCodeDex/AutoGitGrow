@@ -20,6 +20,7 @@
     "jotai": "^2.15.0",
     "lucide-react": "^0.545.0",
     "marked": "12.0.2",
+    "motion": "^12.23.24",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-smoke": "^1.2.0",
