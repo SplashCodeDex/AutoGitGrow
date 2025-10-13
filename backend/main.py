@@ -2,15 +2,29 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Load .env file from the project root
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
+from fastapi.responses import JSONResponse
+
 app = FastAPI()
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request, exc):
+    with open("error.log", "a") as f:
+        f.write(f"An unexpected error occurred: {exc}\n")
+    return JSONResponse(
+        status_code=500,
+        content={"message": f"An unexpected error occurred: {exc}"},
+    )
 
 # Dependency
 def get_db():

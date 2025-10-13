@@ -47,9 +47,9 @@ const Dashboard = ({ isDarkMode }) => {
                     fetch('/api/follower-growth'),
                 ]);
 
-                if (!statsResponse.ok) throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`);
-                if (!activityFeedResponse.ok) throw new Error(`Failed to fetch activity feed: ${activityFeedResponse.statusText}`);
-                if (!followerGrowthResponse.ok) throw new Error(`Failed to fetch follower growth: ${followerGrowthResponse.statusText}`);
+                if (!statsResponse.ok) throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`, { cause: statsResponse });
+                if (!activityFeedResponse.ok) throw new Error(`Failed to fetch activity feed: ${activityFeedResponse.statusText}`, { cause: activityFeedResponse });
+                if (!followerGrowthResponse.ok) throw new Error(`Failed to fetch follower growth: ${followerGrowthResponse.statusText}`, { cause: followerGrowthResponse });
 
                 const stats = await statsResponse.json();
                 const activityFeed = await activityFeedResponse.json();
@@ -97,6 +97,15 @@ const Dashboard = ({ isDarkMode }) => {
 
             } catch (e) {
                 console.error("Failed to fetch dashboard data:", e);
+                let errorMessage = e.message;
+                if (e.cause instanceof Response) {
+                    try {
+                        const errorData = await e.cause.json();
+                        errorMessage = errorData.detail || errorData.message || e.message;
+                    } catch (jsonError) {
+                        // The response was not JSON, so use the original error message
+                    }
+                }
                 setDashboardData({
                     stats: placeholderStatsData,
                     growthData: placeholderFollowerGrowthData,
@@ -105,7 +114,7 @@ const Dashboard = ({ isDarkMode }) => {
                     topRepositories: [],
                     suggestedUsers: [],
                     loading: false,
-                    error: e.message,
+                    error: errorMessage,
                 });
             }
         };
