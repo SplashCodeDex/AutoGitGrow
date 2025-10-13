@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Expose for local access if needed
+
+  init-db:
+    build: ./backend
+    command: /bin/sh -c "alembic upgrade head" # Command to run migrations
+    volumes:
+      - ./backend:/app/backend
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
+    depends_on:
+      - db # Ensure db is ready before running migrations
+
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend # Mount for live code changes
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
+      PAT_TOKEN: ${PAT_TOKEN}
+      BOT_USER: ${BOT_USER}
+      # Add other backend environment variables from .env.example here
+    depends_on:
+      - db
+      - init-db # Ensure migrations are applied before backend starts
+
+  frontend:
+    build: .
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app # Mount for live code changes
+      - /app/node_modules # Exclude node_modules from host mount
+    environment:
+      VITE_API_URL: http://backend:8000
+      # Add other frontend environment variables from .env.example here
+    depends_on:
+      - backend # Frontend needs backend to be up for API calls
+
+  scheduler:
+    build: ./backend # Use the backend image as it has Python dependencies
+    restart: always
+    volumes:
+      - ./backend:/app/backend
+      - ./scripts:/app/scripts # Mount scripts directory
+      - ./config:/app/config # Mount config directory
+      - ./Todo.md:/app/Todo.md # Mount Todo.md for reference
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
+      PAT_TOKEN: ${PAT_TOKEN}
+      BOT_USER: ${BOT_USER}
+      # Add other environment variables for scripts from .env.example here
+    # Command to install cron and start it
+    command: /bin/sh -c "apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py >> /var/log/autotrack.log 2>&1\") | crontab - && crond -f -d 8"
+    depends_on:
+      - db # Scripts might need database access
+      - backend # If scripts interact with backend API, they should depend on it
+
+volumes:
+  db_data:
