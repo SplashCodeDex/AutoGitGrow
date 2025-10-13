@@ -9,6 +9,7 @@ import SettingsPage from './src/components/SettingsPage';
 import MarkdownViewer from './src/components/MarkdownViewer';
 import TextViewer from './src/components/TextViewer';
 import NewSidebar from './src/components/NewSidebar';
+import { Smoke } from './src/components/ui/smoke'; // Add this import
 
 
 
@@ -48,7 +49,6 @@ const App = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'changelog', label: 'Changelog', icon: FileText },
     { id: 'license', label: 'License', icon: FileBadge },
   ];
@@ -72,24 +72,36 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-sans flex antialiased">
-      <NewSidebar 
-        navItems={navItems} 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab}
-        isDarkMode={isDarkMode}
-        toggleTheme={toggleTheme}
-      />
-      
-      <main className={`flex-1 p-4 sm:p-8 overflow-y-auto`}>
-        {renderContent()}
-      </main>
-    </div>
+    <Smoke className="h-screen"> {/* Wrap the entire application with Smoke */}
+      <div className="h-full text-slate-700 dark:text-slate-300 font-sans flex antialiased">
+        <NewSidebar 
+          navItems={navItems} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+        />
+        
+        <main className={`flex-1 p-4 sm:p-8 overflow-y-auto`}>
+          {renderContent()}
+        </main>
+      </div>
+    </Smoke> // Close the Smoke component
   );
 };
 
 const container = document.getElementById('root');
-if (container) {
+
+if (container && !container.dataset.reactRootInitialized) {
   const root = createRoot(container);
   root.render(<React.StrictMode><App /></React.StrictMode>);
+  container.dataset.reactRootInitialized = 'true';
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      root.unmount();
+      delete container.dataset.reactRootInitialized;
+    });
+    import.meta.hot.accept();
+  }
 }

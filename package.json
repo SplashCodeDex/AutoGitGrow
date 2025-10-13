@@ -11,6 +11,8 @@
   "dependencies": {
     "@google/genai": "latest",
     "@radix-ui/react-slot": "^1.2.3",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "date-fns": "3.6.0",
@@ -20,6 +22,7 @@
     "marked": "12.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-smoke": "^1.2.0",
     "recharts": "^3.2.1"
   },
   "devDependencies": {
