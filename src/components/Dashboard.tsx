@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { UserPlus, UserMinus, Users, Star, Github, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +26,7 @@ const placeholderActivityFeedData = [
 ];
 
 import ReciprocityCard from './ReciprocityCard';
+import ActivityCard from './ActivityCard';
 
 const Dashboard = ({ isDarkMode }) => {
     const [dashboardData, setDashboardData] = useState({
@@ -150,7 +152,18 @@ const Dashboard = ({ isDarkMode }) => {
         <>
             <PageHeader title="AutoGitGrow Dashboard" subtitle="Your personal GitHub networking assistant analytics." />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <motion.div
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                    visible: {
+                        transition: {
+                            staggerChildren: 0.1
+                        }
+                    }
+                }}
+            >
                 {loading ? (
                     <>
                         <SkeletonCard />
@@ -169,11 +182,11 @@ const Dashboard = ({ isDarkMode }) => {
                         <StatCard title="Growth Stars" value={stats.growth_stars} icon={Star} color="text-purple-500 bg-purple-500" />
                     </>
                 )}
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
-                    <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Follower Growth</h2>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Follower Growth</h2>
                     {loading ? (
                          <div className="w-full h-[300px] bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                     ) : (
@@ -197,37 +210,16 @@ const Dashboard = ({ isDarkMode }) => {
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
-                    <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Activity Feed</h2>
-                    <ul className="space-y-4">
-                    {(loading ? [{ type: 'Info', target: 'Waiting for first bot run...', time: new Date() }] : activityFeed).slice(0, 5).map((item, index) => {
-                        let Icon, color;
-                        switch (item.type) {
-                            case 'Follow': Icon = UserPlus; color = 'text-green-500'; break;
-                            case 'Unfollow': Icon = UserMinus; color = 'text-red-500'; break;
-                            case 'Star': Icon = Star; color = 'text-yellow-400'; break;
-                            case 'New Follower': Icon = Users; color = 'text-blue-500'; break;
-                            default: Icon = Github; color = 'text-slate-400';
-                        }
-                        return (
-                            <li key={index} className="flex items-start space-x-3 text-sm">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-full mt-1 flex-shrink-0">
-                                    <Icon className={`h-4 w-4 ${color}`} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-slate-700 dark:text-slate-300 truncate">
-                                    <span className="font-semibold">{item.type}:</span> <a href={`https://github.com/${item.target}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.target}</a>
-                                    </p>
-                                    <p className="text-slate-500 dark:text-slate-500 text-xs">{formatDistanceToNow(item.time, { addSuffix: true })}</p>
-
-                                </div>
-                            </li>
-                        );
-                    })}
-                    </ul>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Activity Feed</h2>
+                    <div className="space-y-4">
+                    {(loading ? [{ type: 'Info', target: 'Waiting for first bot run...', time: new Date() }] : activityFeed).slice(0, 5).map((item, index) => (
+                        <ActivityCard key={index} item={item} isDarkMode={isDarkMode} />
+                    ))}
+                    </div>
                 </div>
             </div>
             <div className="mt-8">
-                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Reciprocity Data</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Reciprocity Data</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Object.entries(reciprocity).map(([username, data]) => (
                         <ReciprocityCard key={username} username={username} data={data} />
@@ -235,8 +227,8 @@ const Dashboard = ({ isDarkMode }) => {
                 </div>
             </div>
             <div className="mt-8">
-                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Top Repositories</h2>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Top Repositories</h2>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 overflow-x-auto">
                     <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
                         <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
                             <tr>
@@ -251,10 +243,9 @@ const Dashboard = ({ isDarkMode }) => {
                         <tbody>
                             {topRepositories.map((repo, index) => (
                                 <tr key={index} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700">
-                                    <th scope="row" className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap dark:text-white">
-                                        {repo.name}
-                                    </th>
-                                    <td className="px-6 py-4">
+                                                                    <th scope="row" className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap dark:text-white truncate">
+                                                                        {repo.name}
+                                                                    </th>                                    <td className="px-6 py-4">
                                         {repo.stargazers_count}
                                     </td>
                                 </tr>
@@ -264,11 +255,11 @@ const Dashboard = ({ isDarkMode }) => {
                 </div>
             </div>
             <div className="mt-8">
-                <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4">Suggested Users</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Suggested Users</h2>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
                     <ul className="space-y-2">
                         {suggestedUsers.map((user, index) => (
-                            <li key={index} className="text-slate-700 dark:text-slate-300">
+                            <li key={index} className="text-slate-700 dark:text-slate-300 truncate">
                                 <a href={`https://github.com/${user}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                     {user}
                                 </a>

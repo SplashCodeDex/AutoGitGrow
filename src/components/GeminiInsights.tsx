@@ -54,7 +54,7 @@ const GeminiInsights = ({ stats, growthData, isDarkMode }) => {
   };
 
   return (
-    <div className={`p-6 rounded-2xl shadow-lg transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200/80'} border`}>
+    <div className={`p-6 rounded-2xl shadow-xl transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-slate-200/50'} border`}>
       <div className="flex items-center space-x-3 mb-4">
         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
             <Sparkles className="h-7 w-7 text-indigo-500" />
@@ -62,7 +62,7 @@ const GeminiInsights = ({ stats, growthData, isDarkMode }) => {
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">AI Growth Insights</h2>
       </div>
       
-      <div className="min-h-[6rem] flex flex-col justify-center" aria-live="polite">
+      <div className="min-h-[6rem] flex flex-col justify-center overflow-y-auto max-h-48" aria-live="polite">
         {isLoading ? (
           <div className="space-y-3 animate-pulse">
             <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
@@ -83,7 +83,7 @@ const GeminiInsights = ({ stats, growthData, isDarkMode }) => {
       <button
         onClick={handleGenerateInsight}
         disabled={isLoading}
-        className="mt-5 w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-900 transition-all duration-200 flex items-center justify-center space-x-2 font-semibold"
+        className="mt-5 w-full px-4 py-2.5 bg-indigo-500 text-white rounded-full hover:bg-indigo-600 disabled:bg-indigo-400 dark:disabled:bg-indigo-800 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-slate-900 transition-all duration-300 ease-in-out flex items-center justify-center space-x-2 font-semibold"
       >
         <Sparkles className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         <span>{isLoading ? 'Generating Analysis...' : insight ? 'Regenerate Insight' : 'Generate Insight'}</span>
