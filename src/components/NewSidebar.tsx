@@ -11,7 +11,7 @@ const NewSidebar = ({ navItems, activeTab, setActiveTab, isDarkMode, toggleTheme
         initial={{ width: isCollapsed ? 100 : 288 }}
         animate={{ width: isCollapsed ? 100 : 288 }}
         transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-        className={`relative bg-gradient-to-b from-white to-gray-50 dark:from-[#111111] dark:to-black border-r border-gray-200/80 dark:border-white/10 flex flex-col h-full z-50`}>
+        className={`relative bg-gradient-to-b from-white to-gray-50 dark:from-[#111111] dark:to-black border-r border-gray-200/80 dark:border-white/10 flex flex-col h-full z-50 flex-shrink-0`}>
         
         {/* Aurora Effect */}
         <div className="absolute inset-0 overflow-hidden z-0">

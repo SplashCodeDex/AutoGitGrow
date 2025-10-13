@@ -75,6 +75,10 @@
       },
       "gitmcp": {
         "url": "https://gitmcp.io/docs"
+      },
+      "@magicuidesign/mcp": {
+        "command": "npx",
+        "args": ["-y", "@magicuidesign/mcp@latest"]
       }
     }
   }

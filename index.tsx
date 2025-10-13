@@ -72,8 +72,8 @@ const App = () => {
   };
 
   return (
-    <Smoke className="h-screen"> {/* Wrap the entire application with Smoke */}
-      <div className="h-full text-slate-700 dark:text-slate-300 font-sans flex antialiased">
+    <Smoke className="h-screen"> {/* Put h-screen back on Smoke */}
+      <div className="h-full flex text-slate-700 dark:text-slate-300 font-sans antialiased"> {/* This div should be h-full, not h-screen */}
         <NewSidebar 
           navItems={navItems} 
           activeTab={activeTab} 

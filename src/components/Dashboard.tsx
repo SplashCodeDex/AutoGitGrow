@@ -7,6 +7,7 @@ import GeminiInsights from './GeminiInsights';
 import StatCard from './StatCard';
 import SkeletonCard from './SkeletonCard';
 import PageHeader from './PageHeader';
+import OnboardingMessage from './OnboardingMessage'; // Import the new component
 
 // --- Placeholder Data (used as fallback) ---
 const placeholderStatsData = {
@@ -39,6 +40,7 @@ const Dashboard = ({ isDarkMode }) => {
         loading: true,
         error: null,
     });
+    const [showOnboarding, setShowOnboarding] = useState(true); // State to control visibility
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -150,10 +152,16 @@ const Dashboard = ({ isDarkMode }) => {
 
     return (
         <>
+            {showOnboarding && (
+                <OnboardingMessage
+                    onClose={() => setShowOnboarding(false)}
+                    isDarkMode={isDarkMode}
+                />
+            )}
             <PageHeader title="AutoGitGrow Dashboard" subtitle="Your personal GitHub networking assistant analytics." />
             
             <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-4 mb-8"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -220,7 +228,7 @@ const Dashboard = ({ isDarkMode }) => {
             </div>
             <div className="mt-8">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Reciprocity Data</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     {Object.entries(reciprocity).map(([username, data]) => (
                         <ReciprocityCard key={username} username={username} data={data} />
                     ))}

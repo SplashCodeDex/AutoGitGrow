@@ -25,14 +25,14 @@ const ActivityCard = React.forwardRef<HTMLDivElement, ActivityCardProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-start space-x-3 p-4 rounded-lg shadow-sm transition-all duration-200
+        className={`flex items-start space-x-2 p-3 rounded-lg shadow-sm transition-all duration-200
           ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border`}
       >
-        <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 flex-shrink-0">
+        <div className="p-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 flex-shrink-0">
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
             <span className="font-semibold truncate">{item.type}:</span>{' '}
             <a
               href={`https://github.com/${item.target}`}
