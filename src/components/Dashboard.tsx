@@ -158,7 +158,7 @@ const Dashboard = ({ isDarkMode }) => {
                     isDarkMode={isDarkMode}
                 />
             )}
-            <PageHeader title="AutoGitGrow Dashboard" subtitle="Your personal GitHub networking assistant analytics." />
+            <PageHeader title="AutoGitGrow" subtitle="Your personal GitHub networking assistant analytics." />
             
             <motion.div
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-4 mb-8"

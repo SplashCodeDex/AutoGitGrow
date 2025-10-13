@@ -199,6 +199,9 @@ function AppleHelloEnglishEffect({
           duration: calc(0.8),
           ease: "easeInOut",
           opacity: { duration: 0.4 },
+          repeat: Infinity,
+          repeatType: "loop",
+          repeatDelay: 1,
         }}
       />
       {/* h2, ello */}
@@ -212,6 +215,9 @@ function AppleHelloEnglishEffect({
           ease: "easeInOut",
           delay: calc(0.7),
           opacity: { duration: 0.7, delay: calc(0.7) },
+          repeat: Infinity,
+          repeatType: "loop",
+          repeatDelay: 1,
         }}
         onAnimationComplete={onAnimationComplete}
       />
