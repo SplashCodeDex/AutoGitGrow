@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { UserPlus, UserMinus, Users, Star, Github, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -152,16 +152,18 @@ const Dashboard = ({ isDarkMode }) => {
 
     return (
         <>
-            {showOnboarding && (
-                <OnboardingMessage
-                    onClose={() => setShowOnboarding(false)}
-                    isDarkMode={isDarkMode}
-                />
-            )}
+            <AnimatePresence>
+                {showOnboarding && (
+                    <OnboardingMessage
+                        onClose={() => setShowOnboarding(false)}
+                        isDarkMode={isDarkMode}
+                    />
+                )}
+            </AnimatePresence>
             <PageHeader title="AutoGitGrow" subtitle="Your personal GitHub networking assistant analytics." />
             
             <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-4 mb-8"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-8"
                 initial="hidden"
                 animate="visible"
                 variants={{
