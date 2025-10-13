@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 from . import models, schemas
 import os
@@ -18,7 +19,7 @@ def create_user(db: Session, user: schemas.UserCreate):
 def get_bot_user_id(db: Session):
     bot_username = os.getenv("BOT_USER")
     if not bot_username:
-        raise ValueError("BOT_USER environment variable not set.")
+        return None
     
     bot_user = get_user_by_username(db, username=bot_username)
     if not bot_user:
@@ -50,6 +51,8 @@ def get_top_repositories(db: Session, limit: int = 5):
 
 def get_suggested_users(db: Session, limit: int = 5):
     bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        return []
 
     # Find users who starred the bot's repositories
     starred_by_users_ids = db.query(models.Event.source_user_id).filter(
@@ -82,6 +85,8 @@ def get_suggested_users(db: Session, limit: int = 5):
 
 def get_follow_backs(db: Session):
     bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        return 0
 
     # Get users the bot followed
     bot_followed_users_ids = db.query(models.Event.target_user_id).filter(
@@ -106,6 +111,10 @@ def get_follow_backs(db: Session):
     return follow_backs_count
 
 def get_stats(db: Session):
+    bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        raise HTTPException(status_code=404, detail="BOT_USER environment variable not set. Please configure it in your .env file.")
+
     followers = db.query(models.Event).filter(models.Event.event_type == "follow").count()
     unfollows = db.query(models.Event).filter(models.Event.event_type == "unfollow").count()
     stars = db.query(models.Event).filter(models.Event.event_type == "star").count()
