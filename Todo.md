@@ -21,7 +21,7 @@ This document outlines the planned enhancements and fixes for the AutoGitGrow pr
 
 ## Phase 2: Frontend Enhancements (Layout & Data Handling)
 
--   [ ] **Evaluate `3d-card` component usage:**
+-   [x] **Evaluate `3d-card` component usage:**
     -   Assess if the complexity of `src/components/ui/3d-card.tsx` is justified for `StatCard`s.
     -   *(Consider later: Refactor `StatCard` to use a simpler `div`-based card if `3d-card` is overkill and hinders layout control.)*
 -   [ ] **Centralize API endpoint definitions:**

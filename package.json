@@ -6,7 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:backend": "uvicorn backend.main:app --reload",
+    "start:frontend": "npm run dev",
+    "start:autostarback": "python -u scripts/autostarback.py",
+    "start:autostargrow": "python -u scripts/autostargrow.py",
+    "start:autotrack": "python -u scripts/autotrack.py",
+    "start:autounstarback": "python -u scripts/autounstarback.py",
+    "start:generate_batch_size": "python -u scripts/generate_batch_size.py",
+    "start:gitgrow": "python -u scripts/gitgrow.py",
+    "start:maintainer": "python -u scripts/maintainer.py",
+    "start:shoutouts": "python -u scripts/shoutouts.py",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:autostarback\" \"npm run start:autostargrow\" \"npm run start:autotrack\" \"npm run start:autounstarback\" \"npm run start:generate_batch_size\" \"npm run start:gitgrow\" \"npm run start:maintainer\" \"npm run start:shoutouts",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@google/genai": "latest",
@@ -15,6 +28,7 @@
     "@react-three/fiber": "^9.4.0",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
+    "concurrently": "^9.2.1",
     "date-fns": "3.6.0",
     "framer-motion": "^12.23.24",
     "jotai": "^2.15.0",
