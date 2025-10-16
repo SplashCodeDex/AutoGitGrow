@@ -24,13 +24,13 @@ This document outlines the planned enhancements and fixes for the AutoGitGrow pr
 -   [x] **Evaluate `3d-card` component usage:**
     -   Assess if the complexity of `src/components/ui/3d-card.tsx` is justified for `StatCard`s.
     -   *(Consider later: Refactor `StatCard` to use a simpler `div`-based card if `3d-card` is overkill and hinders layout control.)*
--   [ ] **Centralize API endpoint definitions:**
+-   [x] **Centralize API endpoint definitions:**
     -   Create a dedicated file (e.g., `src/lib/api.ts`) for API endpoint constants.
     -   Update `Dashboard.tsx` to use these centralized definitions.
--   [ ] **Improve Frontend Data Fetching Error Handling:**
+-   [x] **Improve Frontend Data Fetching Error Handling:**
     -   Implement a more robust data fetching strategy (e.g., using `react-query` or `swr` if not already present, or enhancing existing `useEffect` error handling).
     -   Provide better user feedback for API errors.
--   [ ] **Address `isDarkMode` prop drilling:**
+-   [x] **Address `isDarkMode` prop drilling:**
     -   Utilize React Context or Jotai (already in dependencies) to provide `isDarkMode` globally.
     -   Refactor components to consume `isDarkMode` from context/store.
 

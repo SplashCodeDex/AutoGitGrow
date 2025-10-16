@@ -19,7 +19,7 @@ type StartPosition =
   | 'bottom-right';
 
 export interface ThemeToggleButtonProps {
-  theme?: 'light' | 'dark';
+  isDarkMode?: boolean;
   showLabel?: boolean;
   variant?: AnimationVariant;
   start?: StartPosition;
@@ -29,7 +29,7 @@ export interface ThemeToggleButtonProps {
 }
 
 export const ThemeToggleButton = ({
-  theme = 'light',
+  isDarkMode = false,
   showLabel = false,
   variant = 'circle',
   start = 'center',
@@ -142,7 +142,7 @@ export const ThemeToggleButton = ({
             animation: none;
           }
           ::view-transition-new(root) {
-            animation: ${theme === 'light' ? 'wipe-in-dark' : 'wipe-in-light'} 0.4s ease-out;
+            animation: ${!isDarkMode ? 'wipe-in-dark' : 'wipe-in-light'} 0.4s ease-out;
           }
           @keyframes wipe-in-dark {
             from {
@@ -171,7 +171,7 @@ export const ThemeToggleButton = ({
     
     // Call the onClick handler if provided
     onClick?.();
-  }, [onClick, variant, start, url, theme]);
+  }, [onClick, variant, start, url, isDarkMode]);
 
   return (
     <Button
@@ -183,16 +183,16 @@ export const ThemeToggleButton = ({
         showLabel && 'gap-2',
         className
       )}
-      aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+      aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} theme`}
     >
-      {theme === 'light' ? (
-        <Sun className="h-[1.2rem] w-[1.2rem]" />
-      ) : (
+      {isDarkMode ? (
         <Moon className="h-[1.2rem] w-[1.2rem]" />
+      ) : (
+        <Sun className="h-[1.2rem] w-[1.2rem]" />
       )}
       {showLabel && (
         <span className="text-sm">
-          {theme === 'light' ? 'Light' : 'Dark'}
+          {isDarkMode ? 'Dark' : 'Light'}
         </span>
       )}
     </Button>

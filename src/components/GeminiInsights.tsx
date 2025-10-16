@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
-const GeminiInsights = ({ stats, growthData, isDarkMode }) => {
+import { useTheme } from '../lib/state';
+
+const GeminiInsights = ({ stats, growthData }) => {
+    const { isDarkMode } = useTheme();
   const [insight, setInsight] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

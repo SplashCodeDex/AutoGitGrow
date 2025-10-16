@@ -17,7 +17,7 @@
     "start:gitgrow": "python -u scripts/gitgrow.py",
     "start:maintainer": "python -u scripts/maintainer.py",
     "start:shoutouts": "python -u scripts/shoutouts.py",
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:autostarback\" \"npm run start:autostargrow\" \"npm run start:autotrack\" \"npm run start:autounstarback\" \"npm run start:generate_batch_size\" \"npm run start:gitgrow\" \"npm run start:maintainer\" \"npm run start:shoutouts",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down"
   },
@@ -26,6 +26,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.4.0",
+    "@tanstack/react-query": "^5.90.3",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "concurrently": "^9.2.1",

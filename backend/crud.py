@@ -5,6 +5,41 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import func
+from github import Github
+
+def get_detailed_users(db: Session, usernames: list[str]):
+    g = Github(os.getenv("PAT_TOKEN"))
+    detailed_users = []
+    for username in usernames:
+        try:
+            user = g.get_user(username)
+            detailed_users.append({
+                "username": user.login,
+                "avatar_url": user.avatar_url,
+                "followers": user.followers,
+                "url": user.html_url
+            })
+        except Exception as e:
+            # Raise HTTPException to propagate the error to the API endpoint
+            raise HTTPException(status_code=500, detail=f"Error fetching user {username} from GitHub: {e}")
+    return detailed_users
+
+def get_detailed_repositories(db: Session, repo_names: list[str]):
+    g = Github(os.getenv("PAT_TOKEN"))
+    detailed_repos = []
+    for repo_name in repo_names:
+        try:
+            repo = g.get_repo(repo_name)
+            detailed_repos.append({
+                "name": repo.full_name,
+                "description": repo.description,
+                "stargazers_count": repo.stargazers_count,
+                "url": repo.html_url
+            })
+        except Exception as e:
+            # Raise HTTPException to propagate the error to the API endpoint
+            raise HTTPException(status_code=500, detail=f"Error fetching repository {repo_name} from GitHub: {e}")
+    return detailed_repos
 
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
@@ -109,6 +144,33 @@ def get_follow_backs(db: Session):
             follow_backs_count += 1
             
     return follow_backs_count
+
+def get_reciprocity_data(db: Session):
+    bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        return schemas.ReciprocityData(followed_back=[], not_followed_back=[])
+
+    bot_followed_users = db.query(models.User).join(models.Event, models.User.id == models.Event.target_user_id).filter(
+        models.Event.event_type == "follow",
+        models.Event.source_user_id == bot_user_id
+    ).distinct().all()
+
+    followed_back = []
+    not_followed_back = []
+
+    for user in bot_followed_users:
+        user_followed_bot_back = db.query(models.Event).filter(
+            models.Event.event_type == "follow",
+            models.Event.source_user_id == user.id,
+            models.Event.target_user_id == bot_user_id
+        ).first()
+
+        if user_followed_bot_back:
+            followed_back.append(user.username)
+        else:
+            not_followed_back.append(user.username)
+
+    return schemas.ReciprocityData(followed_back=followed_back, not_followed_back=not_followed_back)
 
 def get_stats(db: Session):
     bot_user_id = get_bot_user_id(db)

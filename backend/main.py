@@ -23,7 +23,7 @@ async def generic_exception_handler(request, exc):
         f.write(f"An unexpected error occurred: {exc}\n")
     return JSONResponse(
         status_code=500,
-        content={"message": f"An unexpected error occurred: {exc}"},
+        content={"message": "An internal server error occurred. Please try again later."},
     )
 
 # Dependency
@@ -64,3 +64,15 @@ def create_follower_history(count: int, db: Session = Depends(get_db)):
 def read_follower_history(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     follower_history = crud.get_follower_history(db, skip=skip, limit=limit)
     return follower_history
+
+@app.get("/api/reciprocity", response_model=schemas.ReciprocityData)
+def read_reciprocity(db: Session = Depends(get_db)):
+    return crud.get_reciprocity_data(db)
+
+@app.post("/api/detailed-users")
+def read_detailed_users(usernames: List[str], db: Session = Depends(get_db)):
+    return crud.get_detailed_users(db, usernames)
+
+@app.post("/api/detailed-repositories")
+def read_detailed_repositories(repo_names: List[str], db: Session = Depends(get_db)):
+    return crud.get_detailed_repositories(db, repo_names)

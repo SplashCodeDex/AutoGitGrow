@@ -45,3 +45,7 @@ class FollowerHistory(FollowerHistoryBase):
 
     class Config:
         orm_mode = True
+
+class ReciprocityData(BaseModel):
+    followed_back: List[str]
+    not_followed_back: List[str]

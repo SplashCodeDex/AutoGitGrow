@@ -3,13 +3,16 @@ import { motion } from 'framer-motion';
 import { AppleHelloEnglishEffect } from './ui/apple-hello-effect'; // Import the new component
 import { cn } from '../lib/utils'; // Add this import
 
+import { useTheme } from '../lib/state';
+
+// ... (imports)
+
 interface OnboardingMessageProps {
-  onClose: () => void;
-  isDarkMode: boolean;
+    onClose: () => void;
 }
 
-const OnboardingMessage: React.FC<OnboardingMessageProps> = ({ onClose, isDarkMode }) => {
-  return (
+const OnboardingMessage: React.FC<OnboardingMessageProps> = ({ onClose }) => {
+    const { isDarkMode } = useTheme();  return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

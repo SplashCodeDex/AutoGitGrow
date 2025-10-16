@@ -4,3 +4,4 @@ sqlalchemy
 pydantic
 python-dotenv
 alembic
+PyGithub>=1.55

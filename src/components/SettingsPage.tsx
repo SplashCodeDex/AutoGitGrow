@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from './PageHeader';
+import { useTheme } from '../lib/state';
 
 async function fetchTextFromGitHub(owner, repo, path, branch = null) {
     const refQuery = branch ? `?ref=${branch}` : '';
@@ -18,21 +19,19 @@ async function fetchTextFromGitHub(owner, repo, path, branch = null) {
     return atob(data.content);
 }
 
-const SettingsPage = ({ isDarkMode }) => {
+const SettingsPage = ({ repoOwner, repoName }) => {
+    const { isDarkMode } = useTheme();
     const [whitelistContent, setWhitelistContent] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const REPO_OWNER = 'SplashCodeDex';
-        const REPO_NAME = 'AutoGitGrow';
-
         const fetchWhitelist = async () => {
             setIsLoading(true);
             setError('');
             try {
                 // Fetch from the default branch by passing null for the branch parameter.
-                const content = await fetchTextFromGitHub(REPO_OWNER, REPO_NAME, 'config/whitelist.txt', null);
+                const content = await fetchTextFromGitHub(repoOwner, repoName, 'config/whitelist.txt', null);
                 setWhitelistContent(content);
             } catch (err) {
                 console.error("Error fetching whitelist:", err);
@@ -44,7 +43,7 @@ const SettingsPage = ({ isDarkMode }) => {
         };
 
         fetchWhitelist();
-    }, []);
+    }, [repoOwner, repoName]);
 
     return (
         <>

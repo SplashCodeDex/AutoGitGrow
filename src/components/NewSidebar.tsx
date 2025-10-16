@@ -1,9 +1,10 @@
-
 import React, { useState } from 'react';
 import { ChevronLeft, Sun, Moon, Search, Settings, LayoutDashboard, Activity, HeartHandshake, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTheme } from '../lib/state';
 
-const NewSidebar = ({ navItems, activeTab, setActiveTab, isDarkMode, toggleTheme }) => {
+const NewSidebar = ({ navItems, activeTab, setActiveTab }) => {
+    const { isDarkMode, toggleTheme } = useTheme();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -78,7 +79,7 @@ const NewSidebar = ({ navItems, activeTab, setActiveTab, isDarkMode, toggleTheme
                     <NavItem icon={Settings} label="Settings" isCollapsed={isCollapsed} active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
                 </ul>
                 <div className={`mt-2`}>
-                    <ThemeToggle isCollapsed={isCollapsed} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+                    <ThemeToggle isCollapsed={isCollapsed} />
                 </div>
             </div>
         </div>
@@ -114,7 +115,8 @@ const NavItem = ({ icon: Icon, label, isCollapsed, active, onClick }) => {
   );
 };
 
-const ThemeToggle = ({ isCollapsed, isDarkMode, toggleTheme }) => {
+const ThemeToggle = ({ isCollapsed }) => {
+    const { isDarkMode, toggleTheme, setTheme } = useTheme();
     return (
         <div className={`relative flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center' : 'w-full h-14 rounded-2xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-black/30 p-1.5'}`}>
             <AnimatePresence mode="wait">
@@ -125,7 +127,7 @@ const ThemeToggle = ({ isCollapsed, isDarkMode, toggleTheme }) => {
                         animate={{opacity: 1, scale: 1}}
                         exit={{opacity: 0, scale: 0.5}}
                         onClick={toggleTheme} className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 dark:border-black/30">
-                        {isDarkMode ? <Sun size={20} className="text-yellow-300" /> : <Moon size={20} className="text-indigo-400"/>}
+                        {isDarkMode ? <Moon size={20} className="text-indigo-400"/> : <Sun size={20} className="text-yellow-300" />}
                     </motion.button>
                 ) : (
                     <motion.div key="expanded-theme-toggle" className="w-full h-full flex items-center" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
@@ -137,11 +139,11 @@ const ThemeToggle = ({ isCollapsed, isDarkMode, toggleTheme }) => {
                             }}
                             transition={{ duration: 0.5, type: 'spring', bounce: 0.2 }}
                         />
-                        <button onClick={() => toggleTheme(!isDarkMode)} className={`relative z-10 flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-colors duration-300 ${!isDarkMode ? 'text-indigo-600' : 'text-gray-500'}`}>
+                        <button onClick={() => setTheme('light')} className={`relative z-10 flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-colors duration-300 ${!isDarkMode ? 'text-indigo-600' : 'text-gray-500'}`}>
                             <Sun size={18}/>
                             <span className="font-semibold text-sm">Light</span>
                         </button>
-                        <button onClick={() => toggleTheme(!isDarkMode)} className={`relative z-10 flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-colors duration-300 ${isDarkMode ? 'text-indigo-400' : 'text-gray-500'}`}>
+                        <button onClick={() => setTheme('dark')} className={`relative z-10 flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-colors duration-300 ${isDarkMode ? 'text-indigo-400' : 'text-gray-500'}`}>
                             <Moon size={18}/>
                             <span className="font-semibold text-sm">Dark</span>
                         </button>

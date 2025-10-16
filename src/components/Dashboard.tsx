@@ -1,142 +1,129 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { UserPlus, UserMinus, Users, Star, Github, AlertTriangle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { UserPlus, UserMinus, Users, Star, AlertTriangle } from 'lucide-react';
 import GeminiInsights from './GeminiInsights';
 import StatCard from './StatCard';
 import SkeletonCard from './SkeletonCard';
 import PageHeader from './PageHeader';
-import OnboardingMessage from './OnboardingMessage'; // Import the new component
-
-// --- Placeholder Data (used as fallback) ---
-const placeholderStatsData = {
-  followersGained: 0,
-  followBacks: 0,
-  unfollowed: 0,
-  stargazers: 0,
-  growth_stars: 0,
-  reciprocityRate: 0,
-  topRepositories: [],
-};
-
-const placeholderFollowerGrowthData = Array.from({ length: 7 }, (_, i) => ({ name: `Day ${i + 1}`, followers: 0 }));
-
-const placeholderActivityFeedData = [
-    { type: 'Info', target: 'Waiting for first bot run...', time: new Date() },
-];
-
+import OnboardingMessage from './OnboardingMessage';
+import { STATS_ENDPOINT, ACTIVITY_FEED_ENDPOINT, FOLLOWER_GROWTH_ENDPOINT, RECIPROCITY_ENDPOINT, DETAILED_USERS_ENDPOINT, DETAILED_REPOSITORIES_ENDPOINT } from '../lib/api';
 import ReciprocityCard from './ReciprocityCard';
 import ActivityCard from './ActivityCard';
+import InfoCard from './InfoCard';
+import { useTheme } from '../lib/state';
+import { useQuery } from '@tanstack/react-query';
 
-const Dashboard = ({ isDarkMode }) => {
-    const [dashboardData, setDashboardData] = useState({
-        stats: { ...placeholderStatsData, growth_stars: 0 },
-        growthData: placeholderFollowerGrowthData,
-        activityFeed: placeholderActivityFeedData,
-        reciprocity: {},
-        topRepositories: [],
-        suggestedUsers: [],
-        loading: true,
-        error: null,
+const fetchStats = async () => {
+    const res = await fetch(STATS_ENDPOINT);
+    if (!res.ok) throw new Error('Failed to fetch stats');
+    return res.json();
+};
+
+const fetchActivityFeed = async () => {
+    const res = await fetch(ACTIVITY_FEED_ENDPOINT);
+    if (!res.ok) throw new Error('Failed to fetch activity feed');
+    return res.json();
+};
+
+const fetchFollowerGrowth = async () => {
+    const res = await fetch(FOLLOWER_GROWTH_ENDPOINT);
+    if (!res.ok) throw new Error('Failed to fetch follower growth');
+    return res.json();
+};
+
+const fetchReciprocity = async () => {
+    const res = await fetch(RECIPROCITY_ENDPOINT);
+    if (!res.ok) throw new Error('Failed to fetch reciprocity data');
+    return res.json();
+};
+
+const fetchDetailedUsers = async (usernames) => {
+    const res = await fetch(DETAILED_USERS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(usernames),
     });
-    const [showOnboarding, setShowOnboarding] = useState(true); // State to control visibility
+    if (!res.ok) throw new Error('Failed to fetch detailed users');
+    return res.json();
+};
 
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                const [statsResponse, activityFeedResponse, followerGrowthResponse] = await Promise.all([
-                    fetch('/api/stats'),
-                    fetch('/api/activity-feed'),
-                    fetch('/api/follower-growth'),
-                ]);
+const fetchDetailedRepos = async (repoNames) => {
+    const res = await fetch(DETAILED_REPOSITORIES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(repoNames),
+    });
+    if (!res.ok) throw new Error('Failed to fetch detailed repositories');
+    return res.json();
+};
 
-                if (!statsResponse.ok) throw new Error(`Failed to fetch stats: ${statsResponse.statusText}`, { cause: statsResponse });
-                if (!activityFeedResponse.ok) throw new Error(`Failed to fetch activity feed: ${activityFeedResponse.statusText}`, { cause: activityFeedResponse });
-                if (!followerGrowthResponse.ok) throw new Error(`Failed to fetch follower growth: ${followerGrowthResponse.statusText}`, { cause: followerGrowthResponse });
+const Dashboard = () => {
+    const { isDarkMode } = useTheme();
+    const [showOnboarding, setShowOnboarding] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !localStorage.getItem('hasSeenOnboarding');
+        }
+        return true;
+    });
 
-                const stats = await statsResponse.json();
-                const activityFeed = await activityFeedResponse.json();
-                const followerGrowth = await followerGrowthResponse.json();
+    const { data: stats, isLoading: isLoadingStats, isError: isErrorStats } = useQuery({ queryKey: ['stats'], queryFn: fetchStats });
+    const { data: activityFeed, isLoading: isLoadingActivityFeed, isError: isErrorActivityFeed } = useQuery({ queryKey: ['activityFeed'], queryFn: fetchActivityFeed });
+    const { data: followerGrowth, isLoading: isLoadingFollowerGrowth, isError: isErrorFollowerGrowth } = useQuery({ queryKey: ['followerGrowth'], queryFn: fetchFollowerGrowth });
+    const { data: reciprocity, isLoading: isLoadingReciprocity, isError: isErrorReciprocity } = useQuery({ queryKey: ['reciprocity'], queryFn: fetchReciprocity });
 
-                const parsedActivity = activityFeed.map(item => {
-                    let targetUsername = 'Unknown';
-                    if (item.event_type === 'follow' || item.event_type === 'unfollow') {
-                        targetUsername = item.target_user?.username || 'Unknown';
-                    } else if (item.event_type === 'star' || item.event_type === 'unstar') {
-                        targetUsername = item.source_user?.username || 'Unknown';
-                    } else if (item.event_type === 'followed_by') {
-                        targetUsername = item.source_user?.username || 'Unknown';
-                    }
-                    return {
-                        type: item.event_type,
-                        target: targetUsername,
-                        time: new Date(item.timestamp)
-                    };
-                }).sort((a, b) => b.time.getTime() - a.time.getTime());
+    const { data: detailedUsers, isLoading: isLoadingDetailedUsers, isError: isErrorDetailedUsers } = useQuery({
+        queryKey: ['detailedUsers', stats?.suggested_users],
+        queryFn: () => fetchDetailedUsers(stats.suggested_users),
+        enabled: !!stats?.suggested_users,
+    });
 
-                const growthData = followerGrowth.map(item => ({
-                    name: new Date(item.timestamp).toLocaleDateString(),
-                    followers: item.count,
-                }));
+    const { data: detailedRepos, isLoading: isLoadingDetailedRepos, isError: isErrorDetailedRepos } = useQuery({
+        queryKey: ['detailedRepos', stats?.top_repositories],
+        queryFn: () => fetchDetailedRepos(stats.top_repositories.map(repo => repo.name)),
+        enabled: !!stats?.top_repositories,
+    });
 
-                setDashboardData({
-                    stats: {
-                        followersGained: stats.followers,
-                        followBacks: stats.follow_backs,
-                        unfollowed: stats.unfollows,
-                        stargazers: stats.stars,
-                        unstargazers: stats.unstars,
-                        reciprocityRate: stats.reciprocity_rate,
-                        growth_stars: stats.growth_stars,
-                    },
-                    growthData: growthData,
-                    activityFeed: parsedActivity,
-                    reciprocity: {}, // This data is not yet available from the backend
-                    topRepositories: stats.top_repositories,
-                    suggestedUsers: stats.suggested_users,
-                    loading: false,
-                    error: null,
-                } as any);
+    const isLoading = isLoadingStats || isLoadingActivityFeed || isLoadingFollowerGrowth || isLoadingReciprocity || isLoadingDetailedUsers || isLoadingDetailedRepos;
+    const isError = isErrorStats || isErrorActivityFeed || isErrorFollowerGrowth || isErrorReciprocity || isErrorDetailedUsers || isErrorDetailedRepos;
 
-            } catch (e) {
-                console.error("Failed to fetch dashboard data:", e);
-                let errorMessage = e.message;
-                if (e.cause instanceof Response) {
-                    try {
-                        const errorData = await e.cause.json();
-                        errorMessage = errorData.detail || errorData.message || e.message;
-                    } catch (jsonError) {
-                        // The response was not JSON, so use the original error message
-                    }
-                }
-                setDashboardData({
-                    stats: placeholderStatsData,
-                    growthData: placeholderFollowerGrowthData,
-                    activityFeed: placeholderActivityFeedData,
-                    reciprocity: {},
-                    topRepositories: [],
-                    suggestedUsers: [],
-                    loading: false,
-                    error: errorMessage,
-                });
-            }
-        };
-
-        fetchDashboardData();
-    }, []);
-    const { stats, growthData, activityFeed, reciprocity, topRepositories, suggestedUsers, loading, error } = dashboardData;
-
-    if (error) {
+    if (isError) {
+        const errorMessage = isErrorStats ? 'Failed to load stats.' :
+                             isErrorActivityFeed ? 'Failed to load activity feed.' :
+                             isErrorFollowerGrowth ? 'Failed to load follower growth data.' :
+                             isErrorReciprocity ? 'Failed to load reciprocity data.' :
+                             isErrorDetailedUsers ? 'Failed to load detailed user data.' :
+                             isErrorDetailedRepos ? 'Failed to load detailed repository data.' :
+                             'An unknown error occurred.';
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
                 <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-                <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Failed to Load Dashboard Data</h2>
-                <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-md">{error}</p>
-                <p className="text-slate-500 dark:text-slate-500 mt-4 text-sm">Please try refreshing the page. If the problem persists, check your repository configuration.</p>
+                <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Error Loading Dashboard Data</h2>
+                <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-md">{errorMessage} Please try refreshing the page.</p>
             </div>
         )
     }
+
+    const parsedActivity = activityFeed?.map(item => {
+        let targetUsername = 'Unknown';
+        if (item.event_type === 'follow' || item.event_type === 'unfollow') {
+            targetUsername = item.target_user?.username || 'Unknown';
+        } else if (item.event_type === 'star' || item.event_type === 'unstar') {
+            targetUsername = item.source_user?.username || 'Unknown';
+        } else if (item.event_type === 'followed_by') {
+            targetUsername = item.source_user?.username || 'Unknown';
+        }
+        return {
+            type: item.event_type,
+            target: targetUsername,
+            time: new Date(item.timestamp)
+        };
+    }).sort((a, b) => b.time.getTime() - a.time.getTime()) || [];
+
+    const growthData = followerGrowth?.map(item => ({
+        name: new Date(item.timestamp).toLocaleDateString(),
+        followers: item.count,
+    })) || [];
 
     const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string | number }) => {
         if (active && payload && payload.length) {
@@ -155,8 +142,10 @@ const Dashboard = ({ isDarkMode }) => {
             <AnimatePresence>
                 {showOnboarding && (
                     <OnboardingMessage
-                        onClose={() => setShowOnboarding(false)}
-                        isDarkMode={isDarkMode}
+                        onClose={() => {
+                            setShowOnboarding(false);
+                            localStorage.setItem('hasSeenOnboarding', 'true');
+                        }}
                     />
                 )}
             </AnimatePresence>
@@ -174,7 +163,7 @@ const Dashboard = ({ isDarkMode }) => {
                     }
                 }}
             >
-                {loading ? (
+                {isLoading ? (
                     <>
                         <SkeletonCard />
                         <SkeletonCard />
@@ -183,12 +172,12 @@ const Dashboard = ({ isDarkMode }) => {
                     </>
                 ) : (
                     <>
-                        <StatCard title="Follows" value={stats.followersGained} icon={UserPlus} color="text-green-500 bg-green-500" />
-                        <StatCard title="Unfollows" value={stats.unfollowed} icon={UserMinus} color="text-red-500 bg-red-500" />
-                        <StatCard title="Stars" value={stats.stargazers} icon={Star} color="text-yellow-500 bg-yellow-500" />
-                        <StatCard title="Unstars" value={stats.unstargazers} icon={UserMinus} color="text-red-500 bg-red-500" />
-                        <StatCard title="Follow Backs" value={stats.followBacks} icon={Users} color="text-blue-500 bg-blue-500" />
-                        <StatCard title="Reciprocity Rate" value={`${stats.reciprocityRate.toFixed(2)}%`} icon={Users} color="text-purple-500 bg-purple-500" />
+                        <StatCard title="Follows" value={stats.followers} icon={UserPlus} color="text-green-500 bg-green-500" />
+                        <StatCard title="Unfollows" value={stats.unfollows} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Stars" value={stats.stars} icon={Star} color="text-yellow-500 bg-yellow-500" />
+                        <StatCard title="Unstars" value={stats.unstars} icon={UserMinus} color="text-red-500 bg-red-500" />
+                        <StatCard title="Follow Backs" value={stats.follow_backs} icon={Users} color="text-blue-500 bg-blue-500" />
+                        <StatCard title="Reciprocity Rate" value={`${stats.reciprocity_rate.toFixed(2)}%`} icon={Users} color="text-purple-500 bg-purple-500" />
                         <StatCard title="Growth Stars" value={stats.growth_stars} icon={Star} color="text-purple-500 bg-purple-500" />
                     </>
                 )}
@@ -197,7 +186,7 @@ const Dashboard = ({ isDarkMode }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Follower Growth</h2>
-                    {loading ? (
+                    {isLoading ? (
                          <div className="w-full h-[300px] bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                     ) : (
                     <ResponsiveContainer width="100%" height={300}>
@@ -222,63 +211,45 @@ const Dashboard = ({ isDarkMode }) => {
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Activity Feed</h2>
                     <div className="space-y-4">
-                    {(loading ? [{ type: 'Info', target: 'Waiting for first bot run...', time: new Date() }] : activityFeed).slice(0, 5).map((item, index) => (
-                        <ActivityCard key={index} item={item} isDarkMode={isDarkMode} />
+                    {(isLoading ? [{ type: 'Info', target: 'Waiting for first bot run...', time: new Date() }] : parsedActivity).slice(0, 5).map((item, index) => (
+                        <ActivityCard key={index} item={item} />
                     ))}
                     </div>
                 </div>
             </div>
             <div className="mt-8">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Reciprocity Data</h2>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Followed Back</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {Object.entries(reciprocity).map(([username, data]) => (
-                        <ReciprocityCard key={username} username={username} data={data} />
+                    {reciprocity?.followed_back && reciprocity.followed_back.map((username) => (
+                        <ReciprocityCard key={username} username={username} data={{ status: 'followed_back' }} />
+                    ))}
+                </div>
+            </div>
+            <div className="mt-8">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Not Followed Back</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {reciprocity?.not_followed_back && reciprocity.not_followed_back.map((username) => (
+                        <ReciprocityCard key={username} username={username} data={{ status: 'not_followed_back' }} />
                     ))}
                 </div>
             </div>
             <div className="mt-8">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Top Repositories</h2>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 overflow-x-auto">
-                    <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
-                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
-                            <tr>
-                                <th scope="col" className="px-6 py-3">
-                                    Repository
-                                </th>
-                                <th scope="col" className="px-6 py-3">
-                                    Stargazers
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {topRepositories.map((repo, index) => (
-                                <tr key={index} className="bg-white border-b dark:bg-slate-800 dark:border-slate-700">
-                                                                    <th scope="row" className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap dark:text-white truncate">
-                                                                        {repo.name}
-                                                                    </th>                                    <td className="px-6 py-4">
-                                        {repo.stargazers_count}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {detailedRepos?.map((repo, index) => (
+                        <InfoCard key={index} title={repo.name} data={repo} />
+                    ))}
                 </div>
             </div>
             <div className="mt-8">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Suggested Users</h2>
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
-                    <ul className="space-y-2">
-                        {suggestedUsers.map((user, index) => (
-                            <li key={index} className="text-slate-700 dark:text-slate-300 truncate">
-                                <a href={`https://github.com/${user}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    {user}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {detailedUsers?.map((user, index) => (
+                        <InfoCard key={index} title={user.username} data={user} />
+                    ))}
                 </div>
             </div>
-            {!loading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} isDarkMode={isDarkMode} /></div>}
+            {!isLoading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} /></div>}
         </>
     )
 };
