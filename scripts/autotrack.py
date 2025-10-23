@@ -5,8 +5,27 @@ import sys
 import json
 import time
 import random
+import functools
 from pathlib import Path
 from github import Github, GithubException
+
+# Add parent directory to sys.path to allow importing from backend
+sys.path.append(str(Path(__file__).parent.parent))
+from backend.utils import logger
+
+def github_retry(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except GithubException as e:
+                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
+                    handle_rate_limit(args[0])  # Assuming gh object is the first argument
+                else:
+                    logger.error(f"GitHub API error in {func.__name__}: {e}")
+                    raise
+    return wrapper
 
 BOT_USER = os.getenv("BOT_USER")
 TOKEN = os.getenv("PAT_TOKEN")
@@ -18,7 +37,7 @@ def handle_rate_limit(gh):
     reset_time = rate_limit.core.reset.timestamp()
     sleep_duration = max(0, reset_time - time.time())
     if sleep_duration > 0:
-        print(f"[WARN] Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
+        logger.warning(f"Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
         time.sleep(sleep_duration)
 
 import argparse
@@ -28,85 +47,68 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate the script execution without performing any actions")
     args = parser.parse_args()
 
-    print("=== GitGrowBot autotrack.py started ===")
+    logger.info("=== GitGrowBot autotrack.py started ===")
     if not TOKEN or not BOT_USER:
-        print("ERROR: PAT_TOKEN and BOT_USER required", file=sys.stderr)
+        logger.error("PAT_TOKEN and BOT_USER required")
         sys.exit(1)
-    print(f"PAT_TOKEN and BOT_USER env vars present.")
-    print(f"BOT_USER: {BOT_USER}")
+    logger.info(f"PAT_TOKEN and BOT_USER env vars present.")
+    logger.info(f"BOT_USER: {BOT_USER}")
 
-    print("Authenticating with GitHub...")
+    logger.info("Authenticating with GitHub...")
     gh = Github(TOKEN)
-    while True:
-        try:
-            me = gh.get_user(BOT_USER)
-            print(f"Authenticated as: {me.login}")
-            break
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                handle_rate_limit(gh)
-            else:
-                print("ERROR: Could not authenticate with GitHub:", e)
-                sys.exit(1)
 
-    print("Collecting all public, non-fork repos owned by BOT_USER...")
-    while True:
-        try:
-            repos = [r for r in me.get_repos(type="owner") if not r.fork and not r.private]
-            print(f"Found {len(repos)} repos.")
-            break
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                handle_rate_limit(gh)
-            else:
-                print("ERROR: Failed to list repos:", e)
-                sys.exit(1)
+    @github_retry
+    def get_github_user_with_retry(gh_obj, username):
+        return gh_obj.get_user(username)
+
+    me = get_github_user_with_retry(gh, BOT_USER)
+    logger.info(f"Authenticated as: {me.login}")
+
+    logger.info("Collecting all public, non-fork repos owned by BOT_USER...")
+    @github_retry
+    def get_repos_with_retry(me_obj):
+        return [r for r in me_obj.get_repos(type="owner") if not r.fork and not r.private]
+
+    repos = get_repos_with_retry(me)
+    logger.info(f"Found {len(repos)} repos.")
 
     # Build set of all unique stargazers and their starred repos
     stargazer_set = set()
     reciprocity = {}
 
     for idx, repo in enumerate(repos):
-        print(f"[{idx+1}/{len(repos)}] Processing repo: {repo.full_name}")
-        while True:
-            try:
-                count = 0
-                for u in repo.get_stargazers():
-                    login = u.login
-                    stargazer_set.add(login)
-                    if login not in reciprocity:
-                        reciprocity[login] = {"starred_by": [], "starred_back": []}
-                    reciprocity[login]["starred_by"].append(repo.full_name)
-                    count += 1
-                    if count % 20 == 0:
-                        print(f"    {count} stargazers fetched so far for this repo...")
-                print(f"    Total stargazers fetched for {repo.full_name}: {count}")
-                break
-            except GithubException as e:
-                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                    handle_rate_limit(gh)
-                else:
-                    print(f"    ERROR fetching stargazers for {repo.full_name}: {e}")
-                    break
+        logger.info(f"[{idx+1}/{len(repos)}] Processing repo: {repo.full_name}")
+        
+        @github_retry
+        def get_stargazers_with_retry(repo_obj):
+            return repo_obj.get_stargazers()
+
+        count = 0
+        for u in get_stargazers_with_retry(repo):
+            login = u.login
+            stargazer_set.add(login)
+            if login not in reciprocity:
+                reciprocity[login] = {"starred_by": [], "starred_back": []}
+            reciprocity[login]["starred_by"].append(repo.full_name)
+            count += 1
+            if count % 20 == 0:
+                logger.info(f"    {count} stargazers fetched so far for this repo...")
+        logger.info(f"    Total stargazers fetched for {repo.full_name}: {count}")
 
     current_stargazers = sorted(stargazer_set)
-    print(f"Total unique stargazers across all repos: {len(current_stargazers)}")
+    logger.info(f"Total unique stargazers across all repos: {len(current_stargazers)}")
 
     # Fetch all repos YOU have starred
-    print("Fetching all repos starred by the bot user...")
+    logger.info("Fetching all repos starred by the bot user...")
     starred_repos = []
-    while True:
-        try:
-            for repo in me.get_starred():
-                starred_repos.append(repo)
-            print(f"Bot user has starred {len(starred_repos)} repos in total.")
-            break
-        except GithubException as e:
-            if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                handle_rate_limit(gh)
-            else:
-                print(f"ERROR fetching bot user's starred repos: {e}")
-                break
+    
+    @github_retry
+    def get_starred_with_retry(me_obj):
+        return me_obj.get_starred()
+
+    for repo in get_starred_with_retry(me):
+        starred_repos.append(repo)
+    logger.info(f"Bot user has starred {len(starred_repos)} repos in total.")
 
     # For each of your starred repos, if owner is a stargazer, log as "starred_back"
     for repo in starred_repos:
@@ -116,23 +118,23 @@ def main():
 
     # Load previous state if exists
     if STATE_PATH.exists():
-        print(f"Loading previous state from {STATE_PATH} ...")
+        logger.info(f"Loading previous state from {STATE_PATH} ...")
         with open(STATE_PATH, "r") as f:
             state = json.load(f)
         previous_stargazers = set(state.get("current_stargazers", []))
     else:
-        print("No previous state found.")
+        logger.info("No previous state found.")
         previous_stargazers = set()
 
     # Detect unstargazers: users who have unstarred since last run
     unstargazers = sorted(list(previous_stargazers - stargazer_set))
-    print(f"Unstargazers detected: {len(unstargazers)}")
+    logger.info(f"Unstargazers detected: {len(unstargazers)}")
 
     top_repositories = sorted([{"name": repo.full_name, "stargazers_count": repo.stargazers_count} for repo in repos], key=lambda r: r["stargazers_count"], reverse=True)
 
     # Save new state
     if not args.dry_run:
-        print("Saving new state ...")
+        logger.info("Saving new state ...")
         new_state = {
             "current_stargazers": current_stargazers,
             "unstargazers": unstargazers,
@@ -142,11 +144,11 @@ def main():
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(STATE_PATH, "w") as f:
             json.dump(new_state, f, indent=2)
-        print(f"Saved user-level stargazer state to {STATE_PATH}")
+        logger.info(f"Saved user-level stargazer state to {STATE_PATH}")
     else:
-        print("Dry run, not saving state.")
+        logger.info("Dry run, not saving state.")
 
-    print("=== GitGrowBot autotrack.py finished ===")
+    logger.info("=== GitGrowBot autotrack.py finished ===")
 
 if __name__ == "__main__":
     main()

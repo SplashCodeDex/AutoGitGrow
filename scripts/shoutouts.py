@@ -4,6 +4,11 @@ import os
 import json
 from pathlib import Path
 import requests
+import sys
+
+# Add parent directory to sys.path to allow importing from backend
+sys.path.append(str(Path(__file__).parent.parent))
+from backend.utils import logger
 
 STATE_FILE = Path(".github/state/stars.json")
 OUTPUT_DIR = Path(".github/state")
@@ -13,6 +18,7 @@ REPO = os.environ["GITHUB_REPOSITORY"]
 HEADERS = {"Accept": "application/vnd.github+json"}
 
 def get_stargazers():
+    logger.info("Fetching stargazers...")
     stargazers = set()
     page = 1
     while True:
@@ -25,14 +31,17 @@ def get_stargazers():
         if len(data) < 100:
             break
         page += 1
+    logger.info(f"Fetched {len(stargazers)} stargazers.")
     return stargazers
 
 # Load previous state
 if STATE_FILE.exists():
     with open(STATE_FILE, "r") as f:
         previous_stars = set(json.load(f))
+    logger.info(f"Loaded {len(previous_stars)} previous stars from {STATE_FILE}")
 else:
     previous_stars = set()
+    logger.info("No previous state file found, starting with empty previous stars.")
 
 # Fetch current stargazers
 current_stars = get_stargazers()
@@ -45,6 +54,7 @@ lost_stars = previous_stars - current_stars
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 if new_stars:
+    logger.info(f"Detected {len(new_stars)} new stargazers: {', '.join(sorted(new_stars))}")
     welcome_msg = (
         "# 🌟 **New stargazers detected!**\n"
         "Welcome aboard and thank you for your interest: "
@@ -59,8 +69,10 @@ if new_stars:
 else:
     with open(WELCOME_FILE, "w") as f:
         f.write("No new stargazers detected this run.\n")
+    logger.info("No new stargazers detected.")
 
 if lost_stars:
+    logger.info(f"Detected {len(lost_stars)} lost stargazers: {', '.join(sorted(lost_stars))}")
     farewell_msg = (
         "# 💔 **Oh no, stars fading away...**\n"
         + ", ".join(f"@{u}" for u in sorted(lost_stars))
@@ -74,7 +86,9 @@ if lost_stars:
 else:
     with open(FAREWELL_FILE, "w") as f:
         f.write("No stargazers lost this run.\n")
+    logger.info("No stargazers lost.")
         
 # Save new state
 with open(STATE_FILE, "w") as f:
     json.dump(sorted(current_stars), f, indent=2)
+logger.info(f"New state saved to {STATE_FILE}")

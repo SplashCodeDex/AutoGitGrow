@@ -1,0 +1,43 @@
+name: Build and Push Docker Images
+
+on: 
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+  BACKEND_IMAGE_NAME: autogitgrow-backend
+  FRONTEND_IMAGE_NAME: autogitgrow-frontend
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest ./backend
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+
+      - name: Run backend tests (placeholder)
+        run: echo "Backend tests would run here"
+        # Replace with actual backend test commands, e.g., pytest
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:latest .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+
+      - name: Run frontend tests (placeholder)
+        run: echo "Frontend tests would run here"
+        # Replace with actual frontend test commands, e.g., npm test or yarn test

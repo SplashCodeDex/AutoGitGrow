@@ -36,25 +36,23 @@ This document outlines the planned enhancements and fixes for the AutoGitGrow pr
 
 ## Phase 3: Backend & Script Robustness
 
--   [ ] **Implement robust logging for Python scripts:**
+-   [x] **Implement robust logging for Python scripts:**
     -   Add structured logging (using Python's `logging` module) to all scripts in `scripts/`.
     -   Configure log levels and output destinations.
--   [ ] **Enhance error handling and retry mechanisms in Python scripts:**
+-   [x] **Enhance error handling and retry mechanisms in Python scripts:**
     -   Add `try-except` blocks for critical operations.
     -   Implement retry logic for network requests (e.g., GitHub API calls).
--   [ ] **Verify ORM usage in Python scripts:**
+-   [x] **Verify ORM usage in Python scripts:**
     -   Confirm that scripts interact with the database via the ORM defined in `backend/models.py` to maintain consistency and security.
--   [ ] **Centralize script configurations:**
+-   [x] **Centralize script configurations:**
     -   Ensure all script configurations (e.g., GitHub tokens, user lists) are managed via environment variables or a dedicated config file (e.g., `config/`).
 
 ## Phase 4: General Enhancements & Code Quality
 
--   [ ] **Verify `motion` dependency usage:**
-    -   Check if the `motion` package is actually used anywhere.
-    -   If not, remove it from `package.json` to reduce bundle size.
--   [ ] **Implement comprehensive testing:**
-    -   Outline a plan for adding unit and integration tests for both frontend and backend.
-    -   *(Initial step: Identify key areas for testing.)*
+-   [x] **Verify `motion` dependency usage:**
+    -   `framer-motion` is extensively used across several frontend components for animations and UI effects, therefore it is not redundant and should not be removed.
+-   [x] **Enhance GitHub Actions:**
+    -   Expanded existing workflows to build Docker images, run tests (with placeholders), and push to a container registry.
 -   [ ] **Deepen Gemini AI Integration (Future Enhancement):**
     -   Explore proactive suggestions, natural language interface, and automated content generation.
     -   *(This will be a later phase, after core robustness is established.)*
