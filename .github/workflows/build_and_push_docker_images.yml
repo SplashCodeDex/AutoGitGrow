@@ -29,9 +29,12 @@ jobs:
           docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest ./backend
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest
 
-      - name: Run backend tests (placeholder)
-        run: echo "Backend tests would run here"
-        # Replace with actual backend test commands, e.g., pytest
+      - name: Run backend tests
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/tests/backend:/app/backend/tests/backend \
+            ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+            pytest /app/backend/tests/backend/
 
       - name: Build and push frontend image
         run: |

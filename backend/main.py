@@ -2,12 +2,6 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from .utils import logger
-from dotenv import load_dotenv
-from pathlib import Path
-
-# Load .env file from the project root
-env_path = Path(__file__).resolve().parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine

@@ -28,8 +28,6 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app/backend # Mount for live code changes
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
       PAT_TOKEN: ${PAT_TOKEN}
@@ -43,12 +41,9 @@ services:
     build: .
     restart: always
     ports:
-      - "5173:5173"
-    volumes:
-      - .:/app # Mount for live code changes
-      - /app/node_modules # Exclude node_modules from host mount
+      - "80:80"
     environment:
-      VITE_API_URL: http://backend:8000
+      VITE_API_URL: ${VITE_API_URL}
       # Add other frontend environment variables from .env.example here
     depends_on:
       - backend # Frontend needs backend to be up for API calls
@@ -57,17 +52,15 @@ services:
     build: ./backend # Use the backend image as it has Python dependencies
     restart: always
     volumes:
-      - ./backend:/app/backend
       - ./scripts:/app/scripts # Mount scripts directory
       - ./config:/app/config # Mount config directory
-      - ./Todo.md:/app/Todo.md # Mount Todo.md for reference
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
       PAT_TOKEN: ${PAT_TOKEN}
       BOT_USER: ${BOT_USER}
       # Add other environment variables for scripts from .env.example here
-    # Command to install cron and start it
-    command: /bin/sh -c "apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py >> /var/log/autotrack.log 2>&1\") | crontab - && crond -f -d 8"
+    # Command to install cron and start it, directing logs to stdout
+    command: /bin/sh -c "apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py 2>&1\") | crontab - && crond -f -d 8"
     depends_on:
       - db # Scripts might need database access
       - backend # If scripts interact with backend API, they should depend on it

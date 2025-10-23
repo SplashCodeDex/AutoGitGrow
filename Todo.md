@@ -53,9 +53,19 @@ This document outlines the planned enhancements and fixes for the AutoGitGrow pr
     -   `framer-motion` is extensively used across several frontend components for animations and UI effects, therefore it is not redundant and should not be removed.
 -   [x] **Enhance GitHub Actions:**
     -   Expanded existing workflows to build Docker images, run tests (with placeholders), and push to a container registry.
--   [ ] **Deepen Gemini AI Integration (Future Enhancement):**
-    -   Explore proactive suggestions, natural language interface, and automated content generation.
-    -   *(This will be a later phase, after core robustness is established.)*
--   [ ] **Implement Scheduling for Python scripts (Future Enhancement):**
-    -   Integrate a scheduler (e.g., `APScheduler`) for efficient, timed execution of scripts.
-    -   *(This will be a later phase, after core robustness is established.)*
+-   [x] **Implement comprehensive testing:**
+    -   **Backend Testing (Python):**
+        -   [x] **Unit Tests:** `crud.py` (`get_user_by_username`, `create_user` implemented), `main.py` (API endpoints with mocked DB implemented).
+        -   [x] **Integration Tests:** `main.py` and `crud.py` interaction with real/in-memory DB implemented.
+        -   **Tools:** `pytest`, `httpx`.
+    -   **Frontend Testing (React/TypeScript):**
+        -   **Unit Tests:** Individual components (rendering, props, isolated logic), utility functions.
+        -   **Integration Tests:** Component interactions, data fetching/display from backend.
+        -   **End-to-End (E2E) Tests:** User flows (navigation, UI interaction, data verification) using `Cypress` or `Playwright`.
+        -   **Tools:** `Jest`, `React Testing Library`, `Cypress`/`Playwright`.
+-   [x] **Container Optimization:**
+    -   Refactored `backend/Dockerfile` for multi-stage builds and added `HEALTHCHECK`.
+    -   Refactored root `Dockerfile` (frontend) for multi-stage builds, production serving with Nginx, and added `HEALTHCHECK`.
+    -   Updated `docker-compose.yml` to remove development volumes, update frontend port, make `VITE_API_URL` configurable, and adjust scheduler logging.
+-   [x] **Update Documentation:**
+    -   Updated `README.md` to reflect Dockerfile, `docker-compose.yml`, and CI/CD changes, emphasizing Docker installation, local development, deployment considerations, and GitHub Actions with required secrets.

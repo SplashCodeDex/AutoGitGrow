@@ -2,6 +2,7 @@ FROM python:3.10-slim-buster AS builder
 WORKDIR /app/backend
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY ../tests /app/tests
 
 FROM python:3.10-slim-buster
 WORKDIR /app/backend
