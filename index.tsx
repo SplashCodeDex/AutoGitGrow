@@ -35,10 +35,7 @@ const App = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard 
-                  repoOwner={process.env.VITE_REPO_OWNER}
-                  repoName={process.env.VITE_REPO_NAME}
-               />;
+        return <Dashboard />;
       case 'settings':
         return <SettingsPage />;      case 'changelog':
         return <MarkdownViewer file="/CHANGELOG.md" title="Changelog" />;

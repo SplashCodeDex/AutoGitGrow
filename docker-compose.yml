@@ -59,7 +59,7 @@ services:
       BOT_USER: ${BOT_USER}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     # Command to install cron and start it, directing logs to stdout
-    command: /bin/sh -c "apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py 2>&1\") | crontab - && crond -f -d 8"
+    command: /bin/sh -c "apt-get update && apt-get install -y cron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py 2>&1\") | crontab - && cron -f"
     depends_on:
       - db # Scripts might need database access
       - backend # If scripts interact with backend API, they should depend on it
