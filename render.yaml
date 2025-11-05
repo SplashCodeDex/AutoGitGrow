@@ -1,0 +1,61 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: db
+    plan: free
+    databaseName: ${DB_NAME}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    ipAllowList: [] # Allow all connections for simplicity, restrict in production
+
+  # Backend Service
+  - type: web
+    name: backend
+    plan: free
+    buildCommand: "pip install -r backend/requirements.txt && alembic upgrade head"
+    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: db
+          property: connectionString
+      - key: PAT_TOKEN
+        sync: false # Mark as sensitive, will be set manually in Render dashboard
+      - key: BOT_USER
+        sync: false # Mark as sensitive
+      - key: GEMINI_API_KEY
+        sync: false # Mark as sensitive
+    healthCheckPath: /
+    autoDeploy: true
+    
+  # Frontend Service
+  - type: web
+    name: frontend
+    plan: free
+    buildCommand: "npm install && npm run build"
+    startCommand: "nginx -g 'daemon off;'
+    envVars:
+      - key: VITE_API_URL
+        value: http://backend:8000 # Internal Render service discovery
+      - key: VITE_REPO_NAME
+        sync: false # Mark as sensitive
+    autoDeploy: true
+    
+  # Scheduler Service (for cron jobs)
+  - type: worker
+    name: scheduler
+    plan: free
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "/bin/sh -c \"apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \\\"* * * * * python -u /app/scripts/autotrack.py 2>&1\\\" ) | crontab - && crond -f -d 8\""
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: db
+          property: connectionString
+      - key: PAT_TOKEN
+        sync: false # Mark as sensitive
+      - key: BOT_USER
+        sync: false # Mark as sensitive
+      - key: GEMINI_API_KEY
+        sync: false # Mark as sensitive
+    autoDeploy: true
