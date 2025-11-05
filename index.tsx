@@ -40,10 +40,7 @@ const App = () => {
                   repoName={process.env.VITE_REPO_NAME}
                />;
       case 'settings':
-        return <SettingsPage
-                  repoOwner={process.env.VITE_REPO_OWNER}
-                  repoName={process.env.VITE_REPO_NAME}
-               />;      case 'changelog':
+        return <SettingsPage />;      case 'changelog':
         return <MarkdownViewer file="/CHANGELOG.md" title="Changelog" />;
       case 'license':
         return <TextViewer file="/LICENSE" title="License" />;

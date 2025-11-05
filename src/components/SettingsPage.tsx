@@ -2,24 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from './PageHeader';
 import { useTheme } from '../lib/state';
 
-async function fetchTextFromGitHub(owner, repo, path, branch = null) {
-    const refQuery = branch ? `?ref=${branch}` : '';
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}${refQuery}`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'AutoGitGrow-Dashboard' }
-    });
-    if (!response.ok) {
-      if (response.status === 404) {
-        // For a text file like whitelist, not existing is not a fatal error.
-        return '';
-      }
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-    }
-    const data = await response.json();
-    return atob(data.content);
-}
-
-const SettingsPage = ({ repoOwner, repoName }) => {
+const SettingsPage = () => {
     const { isDarkMode } = useTheme();
     const [whitelistContent, setWhitelistContent] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -30,12 +13,19 @@ const SettingsPage = ({ repoOwner, repoName }) => {
             setIsLoading(true);
             setError('');
             try {
-                // Fetch from the default branch by passing null for the branch parameter.
-                const content = await fetchTextFromGitHub(repoOwner, repoName, 'config/whitelist.txt', null);
+                const response = await fetch('/whitelist.txt');
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        setWhitelistContent('');
+                        return;
+                    }
+                    throw new Error(`Failed to fetch whitelist: ${response.statusText}`);
+                }
+                const content = await response.text();
                 setWhitelistContent(content);
             } catch (err) {
                 console.error("Error fetching whitelist:", err);
-                setError('Error loading whitelist content. Please check your repository structure.');
+                setError('Error loading whitelist content.');
                 setWhitelistContent('');
             } finally {
                 setIsLoading(false);
@@ -43,7 +33,7 @@ const SettingsPage = ({ repoOwner, repoName }) => {
         };
 
         fetchWhitelist();
-    }, [repoOwner, repoName]);
+    }, []);
 
     return (
         <>

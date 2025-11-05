@@ -56,3 +56,4 @@ scripts/unstar_nonreciprocals.py
 public/stargazer_state.json
 sql_app.db
 config/follow_dates.json
+.env
