@@ -12,7 +12,7 @@ class User(UserBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
-User.update_forward_refs()
+User.model_rebuild()
 
 class EventBase(BaseModel):
     event_type: str

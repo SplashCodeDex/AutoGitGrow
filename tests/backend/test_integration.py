@@ -25,7 +25,15 @@ def session_override():
         db.close()
         Base.metadata.drop_all(bind=engine) # Drop tables after tests
 
-app.dependency_overrides[get_db] = session_override
+def override_get_db():
+    db = TestingSessionLocal()
+    Base.metadata.create_all(bind=engine)
+    try:
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
