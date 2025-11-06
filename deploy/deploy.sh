@@ -2,7 +2,7 @@
 
 # Multi-platform deployment script for autogitgrow
 # Usage: ./deploy/deploy.sh [platform] [environment]
-# Platforms: render, railway, digitalocean, docker-hub
+# Platforms: render, railway, digitalocean, docker-hub, vercel, netlify, cloudflare, heroku, surge, firebase
 # Environments: staging, production
 
 set -e
@@ -150,6 +150,133 @@ deploy_docker_hub() {
     print_success "Images pushed to Docker Hub"
 }
 
+# Deploy to Vercel
+deploy_vercel() {
+    print_status "Deploying to Vercel..."
+    
+    if ! command -v vercel &> /dev/null; then
+        print_status "Installing Vercel CLI..."
+        npm install -g vercel
+    fi
+    
+    if [ -z "$VERCEL_TOKEN" ]; then
+        print_error "VERCEL_TOKEN not set. Please run 'vercel login' first or set the token"
+        exit 1
+    fi
+    
+    vercel --prod --token $VERCEL_TOKEN
+    print_success "Vercel deployment completed"
+}
+
+# Deploy to Netlify
+deploy_netlify() {
+    print_status "Deploying to Netlify..."
+    
+    if ! command -v netlify &> /dev/null; then
+        print_status "Installing Netlify CLI..."
+        npm install -g netlify-cli
+    fi
+    
+    if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+        print_error "NETLIFY_AUTH_TOKEN not set. Please run 'netlify login' first"
+        exit 1
+    fi
+    
+    npm run build
+    netlify deploy --prod --dir=dist --auth $NETLIFY_AUTH_TOKEN
+    print_success "Netlify deployment completed"
+}
+
+# Deploy to Cloudflare Pages
+deploy_cloudflare() {
+    print_status "Deploying to Cloudflare Pages..."
+    
+    if ! command -v wrangler &> /dev/null; then
+        print_status "Installing Wrangler CLI..."
+        npm install -g wrangler
+    fi
+    
+    if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+        print_error "CLOUDFLARE_API_TOKEN not set. Please run 'wrangler login' first"
+        exit 1
+    fi
+    
+    npm run build
+    wrangler pages publish dist --project-name autogitgrow
+    print_success "Cloudflare Pages deployment completed"
+}
+
+# Deploy to Heroku
+deploy_heroku() {
+    print_status "Deploying to Heroku..."
+    
+    if ! command -v heroku &> /dev/null; then
+        print_error "Heroku CLI is not installed"
+        print_status "Install it from: https://devcenter.heroku.com/articles/heroku-cli"
+        exit 1
+    fi
+    
+    if [ -z "$HEROKU_API_KEY" ]; then
+        print_error "HEROKU_API_KEY not set. Please run 'heroku login' first"
+        exit 1
+    fi
+    
+    # Check if Heroku app exists
+    if [ -z "$HEROKU_APP_NAME" ]; then
+        print_status "Creating new Heroku app..."
+        heroku create autogitgrow-$(date +%s)
+    else
+        print_status "Deploying to existing app: $HEROKU_APP_NAME"
+    fi
+    
+    # Add PostgreSQL addon
+    heroku addons:create heroku-postgresql:mini || true
+    
+    # Deploy
+    git push heroku main
+    print_success "Heroku deployment completed"
+}
+
+# Deploy to Surge.sh
+deploy_surge() {
+    print_status "Deploying to Surge.sh..."
+    
+    if ! command -v surge &> /dev/null; then
+        print_status "Installing Surge CLI..."
+        npm install -g surge
+    fi
+    
+    npm run build
+    
+    if [ -z "$SURGE_LOGIN" ] || [ -z "$SURGE_TOKEN" ]; then
+        print_warning "SURGE_LOGIN and SURGE_TOKEN not set. You may need to login manually"
+        surge dist
+    else
+        echo "$SURGE_LOGIN" | surge dist --domain autogitgrow.surge.sh
+    fi
+    
+    print_success "Surge deployment completed"
+}
+
+# Deploy to Firebase
+deploy_firebase() {
+    print_status "Deploying to Firebase..."
+    
+    if ! command -v firebase &> /dev/null; then
+        print_status "Installing Firebase CLI..."
+        npm install -g firebase-tools
+    fi
+    
+    if [ -z "$FIREBASE_TOKEN" ]; then
+        print_error "FIREBASE_TOKEN not set. Please run 'firebase login' first"
+        exit 1
+    fi
+    
+    npm run build
+    firebase deploy --token $FIREBASE_TOKEN
+    print_success "Firebase deployment completed"
+}
+
 # Pre-deployment checks
 pre_deploy_checks() {
     print_status "Running pre-deployment checks..."
@@ -191,9 +318,27 @@ main() {
         docker-hub|dockerhub)
             deploy_docker_hub
             ;;
+        vercel)
+            deploy_vercel
+            ;;
+        netlify)
+            deploy_netlify
+            ;;
+        cloudflare|cf)
+            deploy_cloudflare
+            ;;
+        heroku)
+            deploy_heroku
+            ;;
+        surge)
+            deploy_surge
+            ;;
+        firebase)
+            deploy_firebase
+            ;;
         *)
             print_error "Unknown platform: $PLATFORM"
-            print_status "Supported platforms: render, railway, digitalocean, docker-hub"
+            print_status "Supported platforms: render, railway, digitalocean, docker-hub, vercel, netlify, cloudflare, heroku, surge, firebase"
             exit 1
             ;;
     esac
@@ -214,6 +359,24 @@ main() {
         docker-hub)
             print_status "Images are now available on Docker Hub"
             print_status "Deploy using: docker run -p 8000:8000 $DOCKER_HUB_USERNAME/autogitgrow-backend:latest"
+            ;;
+        vercel)
+            print_status "Your app will be available at: https://autogitgrow.vercel.app"
+            ;;
+        netlify)
+            print_status "Your app will be available at: https://autogitgrow.netlify.app"
+            ;;
+        cloudflare)
+            print_status "Your app will be available at: https://autogitgrow.pages.dev"
+            ;;
+        heroku)
+            print_status "Check your Heroku dashboard for the deployment URL"
+            ;;
+        surge)
+            print_status "Your app will be available at: https://autogitgrow.surge.sh"
+            ;;
+        firebase)
+            print_status "Check your Firebase console for the deployment URL"
             ;;
     esac
 }
