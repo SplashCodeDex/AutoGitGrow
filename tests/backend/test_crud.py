@@ -2,7 +2,11 @@ import pytest
 from unittest.mock import MagicMock
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../backend'))
+
+# Add backend directory to Python path
+backend_path = os.path.join(os.path.dirname(__file__), '../../backend')
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
 
 import crud, models, schemas
 
