@@ -5,12 +5,20 @@ from utils import logger
 
 import crud, models, schemas
 from database import SessionLocal, engine
+from health import router as health_router
 
 models.Base.metadata.create_all(bind=engine)
 
 from fastapi.responses import JSONResponse
 
-app = FastAPI()
+app = FastAPI(
+    title="AutoGitGrow API",
+    description="GitHub automation and analytics API",
+    version="2.0.0"
+)
+
+# Include health check routes
+app.include_router(health_router, tags=["health"])
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
