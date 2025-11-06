@@ -13,7 +13,7 @@ services:
 
   init-db:
     build: ./backend
-    command: /bin/sh -c "alembic upgrade head" # Command to run migrations
+    command: /bin/sh -c "python -c 'from database import engine; from models import Base; Base.metadata.create_all(bind=engine); print(\"Database initialized\")'" # Command to initialize database
     volumes:
       - ./backend:/app/backend
     environment:

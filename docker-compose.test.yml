@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db-test:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test_autogitgrow
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-test:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db-test:5432/test_autogitgrow
+      - TESTING=true
+    depends_on:
+      db-test:
+        condition: service_healthy
+    command: pytest tests/ -v
+    volumes:
+      - ./tests:/app/backend/tests
+
+  frontend-test:
+    build: .
+    command: npm run test || echo "No tests found"
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests

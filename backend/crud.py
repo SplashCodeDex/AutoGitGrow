@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
-from . import models, schemas
+import models, schemas
 import os
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import func
 from github import Github
-from .utils import logger
+from utils import logger
 
 def get_detailed_users(db: Session, usernames: list[str]):
     logger.info(f"Fetching detailed users for: {usernames}")

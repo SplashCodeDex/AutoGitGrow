@@ -12,8 +12,8 @@ services:
   - type: web
     name: backend
     plan: free
-    buildCommand: "pip install -r backend/requirements.txt && alembic upgrade head"
-    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && python -c 'from database import engine; from models import Base; Base.metadata.create_all(bind=engine)' && uvicorn main:app --host 0.0.0.0 --port 8000"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -33,10 +33,10 @@ services:
     name: frontend
     plan: free
     buildCommand: "npm install && npm run build"
-    startCommand: "nginx -g 'daemon off;'
+    startCommand: "npm run preview -- --host 0.0.0.0 --port 10000"
     envVars:
       - key: VITE_API_URL
-        value: http://backend:8000 # Internal Render service discovery
+        value: https://backend.onrender.com # Update with your actual backend URL
       - key: VITE_REPO_NAME
         sync: false # Mark as sensitive
     autoDeploy: true

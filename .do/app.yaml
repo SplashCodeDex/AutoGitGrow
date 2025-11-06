@@ -1,0 +1,83 @@
+name: autogitgrow
+region: nyc
+
+services:
+  - name: backend
+    source_dir: /backend
+    github:
+      repo: your-username/autogitgrow
+      branch: main
+    build_command: pip install -r requirements.txt
+    run_command: uvicorn main:app --host 0.0.0.0 --port 8080
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    routes:
+      - path: /api
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE_URL}
+      - key: PAT_TOKEN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: BOT_USER
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: GEMINI_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+
+  - name: frontend
+    source_dir: /
+    github:
+      repo: your-username/autogitgrow
+      branch: main
+    build_command: npm install && npm run build
+    run_command: npm run preview -- --host 0.0.0.0 --port 8080
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    routes:
+      - path: /
+    envs:
+      - key: VITE_API_URL
+        scope: BUILD_TIME
+        value: ${backend.PUBLIC_URL}
+      - key: VITE_REPO_OWNER
+        scope: BUILD_TIME
+        type: SECRET
+      - key: VITE_REPO_NAME
+        scope: BUILD_TIME
+        type: SECRET
+
+databases:
+  - name: db
+    engine: PG
+    version: "15"
+    size: basic-xs
+    num_nodes: 1
+
+workers:
+  - name: scheduler
+    source_dir: /
+    github:
+      repo: your-username/autogitgrow
+      branch: main
+    build_command: pip install -r backend/requirements.txt
+    run_command: python -u scripts/autotrack.py
+    environment_slug: python
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE_URL}
+      - key: PAT_TOKEN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: BOT_USER
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
