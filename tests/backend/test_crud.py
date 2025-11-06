@@ -1,6 +1,10 @@
 import pytest
 from unittest.mock import MagicMock
-from backend import crud, models, schemas
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../backend'))
+
+import crud, models, schemas
 
 # Mock the database session
 @pytest.fixture

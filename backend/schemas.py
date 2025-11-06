@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional
 
@@ -10,8 +10,7 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 User.update_forward_refs()
 
@@ -30,8 +29,7 @@ class Event(EventBase):
     source_user: Optional[User] = None
     target_user: Optional[User] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class FollowerHistoryBase(BaseModel):
     timestamp: datetime
@@ -43,8 +41,7 @@ class FollowerHistoryCreate(FollowerHistoryBase):
 class FollowerHistory(FollowerHistoryBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReciprocityData(BaseModel):
     followed_back: List[str]
