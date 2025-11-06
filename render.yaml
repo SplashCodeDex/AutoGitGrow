@@ -3,9 +3,6 @@ services:
   - type: pserv
     name: db
     plan: free
-    databaseName: ${DB_NAME}
-    user: ${DB_USER}
-    password: ${DB_PASSWORD}
     ipAllowList: [] # Allow all connections for simplicity, restrict in production
 
   # Backend Service
@@ -44,7 +41,7 @@ services:
     name: scheduler
     plan: free
     buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "/bin/sh -c \"apk add --no-cache dcron && (crontab -l 2>/dev/null; echo \\\"* * * * * python -u /app/scripts/autotrack.py 2>&1\\\" ) | crontab - && crond -f -d 8\""
+    startCommand: "python -u /opt/render/project/src/scripts/autotrack.py"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
