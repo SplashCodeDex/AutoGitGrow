@@ -86,16 +86,12 @@ Create a `.env` file in the root of your project directory. This file will store
 PAT_TOKEN=your_github_personal_access_token
 BOT_USER=your_github_username
 GEMINI_API_KEY=your_google_gemini_api_key
-VITE_REPO_OWNER=your_repo_owner_username # e.g., SplashCodeDex
-VITE_REPO_NAME=your_repo_name # e.g., AutoGitGrow
 VITE_API_URL=http://localhost:8000 # For local frontend to communicate with local backend
 ```
 
 *   **`PAT_TOKEN`**: Your GitHub Personal Access Token (scopes: `user:follow`, `public_repo`).
 *   **`BOT_USER`**: Your GitHub username.
 *   **`GEMINI_API_KEY`**: Your Google Gemini API Key (required for AI Insights).
-*   **`VITE_REPO_OWNER`**: The owner of the repository where AutoGitGrow is running (e.g., `SplashCodeDex`).
-*   **`VITE_REPO_NAME`**: The name of the repository where AutoGitGrow is running (e.g., `AutoGitGrow`).
 *   **`VITE_API_URL`**: The URL where your backend API is accessible. For local development, this is `http://localhost:8000`.
 
 ### 3. Local Development with Docker Compose
@@ -277,8 +273,6 @@ Your username will be **automatically** added to the master `usernames.txt` list
 | `PAT_TOKEN`         | Your PAT with `user:follow`, `public_repo` scopes. Stored in repo secrets or local `.env`.              | **Required**           |
 | `BOT_USER`          | Your GitHub username. Stored in repo variables or local `.env`.                                         | **Required**           |
 | `GEMINI_API_KEY`    | Your Google Gemini API Key. Stored in repo secrets or local `.env`.                                     | **Required**           |
-| `VITE_REPO_OWNER`   | The owner of the repository. Stored in local `.env`.                                                    | **Required**           |
-| `VITE_REPO_NAME`    | The name of the repository. Stored in local `.env`.                                                     | **Required**           |
 | `USERNAME_FILE`     | File listing target usernames.                                                                           | `config/usernames.txt` |
 | `WHITELIST_FILE`    | File listing usernames to protect from actions.                                                         | `config/whitelist.txt` |
 | `FOLLOWERS_PER_RUN` | Number of new users to follow each run.                                                                 | Random: `5–155`        |

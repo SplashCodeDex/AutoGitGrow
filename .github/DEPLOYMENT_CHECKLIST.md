@@ -22,7 +22,6 @@ Use this checklist to ensure successful deployment to any platform.
 - [ ] `PAT_TOKEN` - GitHub Personal Access Token with repo access
 - [ ] `BOT_USER` - Your GitHub username
 - [ ] `GEMINI_API_KEY` - Google AI key (optional)
-- [ ] Repository info: `VITE_REPO_OWNER` and `VITE_REPO_NAME`
 
 ## 🎯 Platform Selection
 

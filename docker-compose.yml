@@ -42,8 +42,6 @@ services:
       - "80:80"
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-      VITE_REPO_OWNER: ${VITE_REPO_OWNER}
-      VITE_REPO_NAME: ${VITE_REPO_NAME}
     depends_on:
       - backend # Frontend needs backend to be up for API calls
 

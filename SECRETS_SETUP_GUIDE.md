@@ -7,7 +7,6 @@ This comprehensive guide will help you set up all required secrets and environme
 ### ✅ Required for Basic Functionality
 - [ ] GitHub Personal Access Token (`PAT_TOKEN`)
 - [ ] GitHub Username (`BOT_USER`)
-- [ ] Repository Configuration (`VITE_REPO_OWNER`, `VITE_REPO_NAME`)
 
 ### ✅ Required for CI/CD Pipeline
 - [ ] Docker Hub Username (`DOCKER_HUB_USERNAME`)
@@ -45,21 +44,8 @@ This comprehensive guide will help you set up all required secrets and environme
 
 **Example**: `SplashCodeDex`
 
-### 3. 📦 Repository Configuration
 
-**Purpose**: Identifies your repository for the frontend dashboard
-
-**Values needed:**
-- `VITE_REPO_OWNER`: Your GitHub username
-- `VITE_REPO_NAME`: Your repository name (usually `autogitgrow`)
-
-**Example:**
-```bash
-VITE_REPO_OWNER=SplashCodeDex
-VITE_REPO_NAME=AutoGitGrow
-```
-
-### 4. 🐳 Docker Hub Credentials
+### 3. 🐳 Docker Hub Credentials
 
 **Purpose**: Required for CI/CD pipeline to push Docker images
 
@@ -75,7 +61,7 @@ VITE_REPO_NAME=AutoGitGrow
 - `DOCKER_HUB_USERNAME`: Your Docker Hub username
 - `DOCKER_HUB_TOKEN`: The access token you just created
 
-### 5. 🤖 Google Gemini API Key (Optional)
+### 4. 🤖 Google Gemini API Key (Optional)
 
 **Purpose**: Enables AI-powered insights in your dashboard
 
@@ -159,8 +145,6 @@ Click **"Variables"** tab and add:
 
 ```bash
 BOT_USER=YourGitHubUsername
-VITE_REPO_OWNER=YourGitHubUsername
-VITE_REPO_NAME=AutoGitGrow
 ```
 
 ## 🏠 Local Development Environment
@@ -188,8 +172,6 @@ GEMINI_API_KEY=AIzaSy_your_gemini_api_key
 
 # Frontend Configuration
 VITE_API_URL=http://localhost:8000
-VITE_REPO_OWNER=YourGitHubUsername
-VITE_REPO_NAME=AutoGitGrow
 
 # Script Configuration
 FOLLOWERS_PER_RUN=150

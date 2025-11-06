@@ -37,8 +37,6 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://backend.onrender.com # Update with your actual backend URL
-      - key: VITE_REPO_NAME
-        sync: false # Mark as sensitive
     autoDeploy: true
     
   # Scheduler Service (for cron jobs)

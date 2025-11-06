@@ -46,12 +46,6 @@ services:
       - key: VITE_API_URL
         scope: BUILD_TIME
         value: ${backend.PUBLIC_URL}
-      - key: VITE_REPO_OWNER
-        scope: BUILD_TIME
-        type: SECRET
-      - key: VITE_REPO_NAME
-        scope: BUILD_TIME
-        type: SECRET
 
 databases:
   - name: db
