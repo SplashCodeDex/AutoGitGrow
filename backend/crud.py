@@ -72,7 +72,7 @@ def get_bot_user_id(db: Session):
 
 def create_event(db: Session, event: schemas.EventCreate, source_user_id: Optional[int] = None, target_user_id: Optional[int] = None, repository_name: Optional[str] = None):
     logger.info(f"Creating event of type '{event.event_type}' for source_user_id: {source_user_id}, target_user_id: {target_user_id}, repository_name: {repository_name}")
-    db_event = models.Event(**event.dict())
+    db_event = models.Event(**event.model_dump())
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
