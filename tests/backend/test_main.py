@@ -1,8 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
-from backend.main import app, get_db
-from backend import models, schemas
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../backend'))
+
+from main import app, get_db
+import models, schemas
 
 # Create a test client for the FastAPI app
 client = TestClient(app)

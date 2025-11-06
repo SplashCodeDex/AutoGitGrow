@@ -61,7 +61,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_autogitgrow
         run: |
           cd backend
-          pytest tests/ -v
+          python -m pytest ../tests/backend/ -v
 
       - name: Run frontend linting
         run: npm run lint || echo "No lint script found, skipping..."

@@ -8,3 +8,6 @@ PyGithub>=1.55
 pytest
 pytest-mock
 httpx
+psutil
+psycopg2-binary
+requests
