@@ -98,6 +98,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
       - name: Extract metadata for backend
         id: meta-backend
@@ -105,7 +106,6 @@ jobs:
         with:
           images: |
             ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -118,7 +118,6 @@ jobs:
         with:
           images: |
             ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
           tags: |
             type=ref,event=branch
             type=ref,event=pr
