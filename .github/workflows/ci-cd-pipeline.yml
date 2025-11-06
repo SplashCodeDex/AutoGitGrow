@@ -59,9 +59,9 @@ jobs:
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_autogitgrow
-          PYTHONPATH: /home/runner/work/AutoGitGrow/AutoGitGrow/backend
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}
         run: |
-          python -m pytest tests/backend/ -v
+          python -m pytest tests/backend/ -v --tb=short
 
       - name: Run frontend linting
         run: npm run lint || echo "No lint script found, skipping..."

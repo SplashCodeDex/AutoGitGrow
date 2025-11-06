@@ -20,12 +20,14 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db-test:5432/test_autogitgrow
       - TESTING=true
+      - PYTHONPATH=/app/backend:/app
     depends_on:
       db-test:
         condition: service_healthy
-    command: pytest tests/ -v
+    command: bash -c "cd /app && python -m pytest tests/backend/ -v --tb=short"
     volumes:
-      - ./tests:/app/backend/tests
+      - ./tests:/app/tests
+      - ./backend:/app/backend
 
   frontend-test:
     build: .
