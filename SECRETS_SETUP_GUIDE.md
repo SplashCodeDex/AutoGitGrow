@@ -2,7 +2,7 @@
 
 This comprehensive guide will help you set up all required secrets and environment variables for AutoGitGrow's CI/CD pipeline and deployment platforms.
 
-## 📋 Quick Setup Checklist
+## 📋 Quick Setup Checklist.
 
 ### ✅ Required for Basic Functionality
 - [ ] GitHub Personal Access Token (`PAT_TOKEN`)
