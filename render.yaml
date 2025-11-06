@@ -33,7 +33,10 @@ services:
     startCommand: "npm run preview -- --host 0.0.0.0 --port 10000"
     envVars:
       - key: VITE_API_URL
-        value: https://backend.onrender.com # Update with your actual backend URL
+        fromService:
+          type: web
+          name: backend
+          property: host
     autoDeploy: true
     
   # Scheduler Service (for cron jobs)

@@ -1,4 +1,4 @@
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const STATS_ENDPOINT = `${API_BASE_URL}/stats`;
 export const ACTIVITY_FEED_ENDPOINT = `${API_BASE_URL}/activity-feed`;

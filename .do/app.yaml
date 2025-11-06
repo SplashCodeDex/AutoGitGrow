@@ -5,7 +5,7 @@ services:
   - name: backend
     source_dir: /backend
     github:
-      repo: your-username/autogitgrow
+      repo: SplashCodeDex/AutoGitGrow
       branch: main
     build_command: pip install -r requirements.txt
     run_command: uvicorn main:app --host 0.0.0.0 --port 8080
@@ -32,7 +32,7 @@ services:
   - name: frontend
     source_dir: /
     github:
-      repo: your-username/autogitgrow
+      repo: SplashCodeDex/AutoGitGrow
       branch: main
     build_command: npm install && npm run build
     run_command: npm run preview -- --host 0.0.0.0 --port 8080
@@ -58,7 +58,7 @@ workers:
   - name: scheduler
     source_dir: /
     github:
-      repo: your-username/autogitgrow
+      repo: SplashCodeDex/AutoGitGrow
       branch: main
     build_command: pip install -r backend/requirements.txt
     run_command: python -u scripts/autotrack.py

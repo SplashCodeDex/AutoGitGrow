@@ -20,7 +20,10 @@
       "variables": {
         "PYTHON_VERSION": "3.10",
         "DATABASE_URL": "${{Postgres.DATABASE_URL}}",
-        "PORT": "8000"
+        "PORT": "8000",
+        "PAT_TOKEN": "${{PAT_TOKEN}}",
+        "BOT_USER": "${{BOT_USER}}",
+        "GEMINI_API_KEY": "${{GEMINI_API_KEY}}"
       }
     },
     "frontend": {
