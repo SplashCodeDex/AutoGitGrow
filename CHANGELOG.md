@@ -74,6 +74,18 @@
 
 ---
 
+## [2.1.0] – 2025-11-14
+
+### Added
+- Backend auto-loads environment variables from `.env` and optional `.env.local`.
+- Local development (no Docker) documentation across README, CONTRIBUTING, and Deployment Guide.
+
+### Changed
+- `.env.example` streamlined for SQLite local dev; added `ENABLE_SQLALCHEMY_CREATE_ALL` for first run.
+- Secrets guide updated: clarified local vs production env handling and added non-Docker run steps.
+
+---
+
 ## [2.0.0] – 2025-01-XX
 
 ### 🚀 Major: Enterprise CI/CD & Multi-Platform Deployment

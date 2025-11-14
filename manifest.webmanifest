@@ -1,0 +1,11 @@
+{
+  "name": "AutoGitGrow Dashboard",
+  "short_name": "AutoGitGrow",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+  ]
+}

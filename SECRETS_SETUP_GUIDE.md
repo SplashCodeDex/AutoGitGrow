@@ -149,32 +149,43 @@ BOT_USER=YourGitHubUsername
 
 ## 🏠 Local Development Environment
 
-Create a `.env` file in your project root:
+The backend auto-loads environment variables from `.env` and optionally `.env.local` (overrides).
 
+Create a `.env` file in your project root:
 ```bash
-# Copy from .env.example and fill in your values
 cp .env.example .env
 ```
 
-**Edit `.env` with your values:**
+Recommended minimal values for local dev:
 ```bash
-# Database Credentials (for local development)
-DB_NAME=autogitgrow_db
-DB_USER=CodeDeX
-DB_PASSWORD=passwordisroot
-
-# GitHub Configuration
-PAT_TOKEN=ghp_your_github_token_here
-BOT_USER=YourGitHubUsername
+# Frontend
+VITE_API_URL=http://localhost:8000
 
 # Optional: AI Insights
 GEMINI_API_KEY=AIzaSy_your_gemini_api_key
 
-# Frontend Configuration
-VITE_API_URL=http://localhost:8000
+# Automations (optional for GitHub workflow_dispatch)
+GITHUB_REPO_OWNER=your-gh-username-or-org
+GITHUB_REPO_NAME=your-repo-name
+GITHUB_PAT=ghp_your_pat_with_workflow_scope
 
-# Script Configuration
-FOLLOWERS_PER_RUN=150
+# First run: create SQLite tables
+ENABLE_SQLALCHEMY_CREATE_ALL=true
+```
+
+Notes:
+- SQLite is used by default locally. DB_* variables are NOT required for local development.
+- Use `.env.local` to override `.env` values on your machine.
+- For frontend access control to automation endpoints, set VITE_AUTOMATION_API_KEY to match backend AUTOMATION_API_KEY.
+
+Run locally (no Docker):
+```bash
+npm ci
+pip install -r backend/requirements.txt
+npm run start:backend   # http://localhost:8000
+npm run start:frontend  # http://localhost:3000
+# or both
+npm start
 ```
 
 ## 🧪 Testing Your Setup

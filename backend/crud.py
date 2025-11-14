@@ -1,16 +1,17 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
-import models, schemas
+import backend.models as models
+import backend.schemas as schemas
 import os
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import func
 from github import Github
-from utils import logger
+from backend.utils import logger
 
 def get_detailed_users(db: Session, usernames: list[str]):
     logger.info(f"Fetching detailed users for: {usernames}")
-    g = Github(os.getenv("PAT_TOKEN"))
+    g = Github(os.getenv("GITHUB_PAT"))
     detailed_users = []
     for username in usernames:
         try:
@@ -28,7 +29,7 @@ def get_detailed_users(db: Session, usernames: list[str]):
 
 def get_detailed_repositories(db: Session, repo_names: list[str]):
     logger.info(f"Fetching detailed repositories for: {repo_names}")
-    g = Github(os.getenv("PAT_TOKEN"))
+    g = Github(os.getenv("GITHUB_PAT"))
     detailed_repos = []
     for repo_name in repo_names:
         try:

@@ -2,6 +2,7 @@ import os
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import requests
+from backend.health import metrics
 
 router = APIRouter()
 
@@ -9,6 +10,7 @@ GITHUB_API_BASE = "https://api.github.com"
 
 REQUIRE_API_KEY = os.getenv("AUTOMATION_API_KEY") is not None
 API_KEY_HEADER = "X-Automation-Key"
+MOCK_MODE = os.getenv("AUTOMATION_MOCK_MODE", "false").lower() == "true"
 
 WORKFLOW_MAP = {
     "manual_follow": "manual_follow.yml",
@@ -39,8 +41,21 @@ def _get_env(name: str) -> str:
         raise HTTPException(status_code=500, detail=f"Missing required environment variable: {name}")
     return v
 
+def _get_token() -> str:
+    token = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
+    if not token:
+        raise HTTPException(status_code=500, detail="Missing required environment variable: GITHUB_PAT (or PAT_TOKEN for backward compatibility)")
+    return token
+
 
 def dispatch_workflow(workflow_file: str, ref: str, inputs: dict | None = None):
+    if MOCK_MODE:
+        # In mock mode, simulate a successful dispatch without calling GitHub
+        metrics["automation_dispatch_count"] = metrics.get("automation_dispatch_count", 0) + 1
+        owner = os.getenv("GITHUB_REPO_OWNER", "owner")
+        repo = os.getenv("GITHUB_REPO_NAME", "repo")
+        return {"actions_url": f"https://github.com/{owner}/{repo}/actions"}
+    
     owner = _get_env("GITHUB_REPO_OWNER")
     repo = _get_env("GITHUB_REPO_NAME")
     token = _get_env("GITHUB_PAT")
@@ -61,27 +76,37 @@ def dispatch_workflow(workflow_file: str, ref: str, inputs: dict | None = None):
     for attempt in range(5):
         r = requests.post(url, json=payload, headers=headers, timeout=20)
         if r.status_code in (201, 204):
-            break
+            # success
+            metrics["automation_dispatch_count"] = metrics.get("automation_dispatch_count", 0) + 1
+            return {"actions_url": f"https://github.com/{owner}/{repo}/actions"}
         if r.status_code in (429, 502, 503):
             import time as _t
             _t.sleep(backoff)
             backoff *= 2
             continue
         # Non-retryable
-            from health import metrics
         metrics["automation_dispatch_failures"] = metrics.get("automation_dispatch_failures", 0) + 1
         raise HTTPException(status_code=502, detail=f"GitHub dispatch failed ({r.status_code}): {r.text}")
-    else:
-        raise HTTPException(status_code=502, detail=f"GitHub dispatch failed after retries: {r.status_code} {r.text}")
 
-        from health import metrics
-    metrics["automation_dispatch_count"] = metrics.get("automation_dispatch_count", 0) + 1
-    return {
-        "actions_url": f"https://github.com/{owner}/{repo}/actions"
-    }
+    # Exhausted retries
+    metrics["automation_dispatch_failures"] = metrics.get("automation_dispatch_failures", 0) + 1
+    raise HTTPException(status_code=502, detail=f"GitHub dispatch failed after retries: {r.status_code} {r.text}")
 
 
 def list_workflow_runs(workflow_file: str, per_page: int = 1):
+    if MOCK_MODE:
+        # Return a synthetic recent successful run
+        from datetime import datetime, timezone
+        import time as _t
+        metrics["automation_last_success_timestamp"][workflow_file] = _t.time()
+        return {
+            "id": 123456,
+            "status": "completed",
+            "conclusion": "success",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "html_url": f"https://github.com/mock/{workflow_file}/runs/1"
+        }
+    
     owner = _get_env("GITHUB_REPO_OWNER")
     repo = _get_env("GITHUB_REPO_NAME")
     token = _get_env("GITHUB_PAT")
@@ -112,6 +137,10 @@ def list_workflow_runs(workflow_file: str, per_page: int = 1):
     if not runs:
         return None
     run = runs[0]
+    # Track last success time per workflow
+    if run.get("conclusion") == "success":
+        import time as _t
+        metrics["automation_last_success_timestamp"][workflow_file] = _t.time()
     return {
         "id": run.get("id"),
         "status": run.get("status"),
@@ -135,10 +164,10 @@ def run_automation(req: AutomationRunRequest, request: Request):
     workflow_file = WORKFLOW_MAP[action]
     ref = req.ref or os.getenv("AUTOMATION_DEFAULT_REF", "main")
 
-        # Audit log
+    # Audit log
     client_ip = request.client.host if request.client else 'unknown'
-    os.environ.get('')  # no-op to avoid unused import warnings
-    print(f"[audit] automation_run action={action} ip={client_ip} ref={ref}")
+    from utils import logger
+    logger.info(f"[audit] automation_run action={action} ip={client_ip} ref={ref}")
 
     result = dispatch_workflow(workflow_file, ref, req.inputs)
 
@@ -171,8 +200,8 @@ def get_automation_runs(action: str | None = None, request: Request = None, per_
         last = list_workflow_runs(wf, per_page=per_page)
         return AutomationRunInfo(action=action, workflow=wf, last_run=last)
 
-    # If no action provided, return latest for all
-        results = []
+        # If no action provided, return latest for all
+    results = []
     for a, wf in WORKFLOW_MAP.items():
         last = list_workflow_runs(wf, per_page=per_page)
         results.append(AutomationRunInfo(action=a, workflow=wf, last_run=last))

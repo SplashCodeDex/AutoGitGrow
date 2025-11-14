@@ -1,0 +1,35 @@
+name: Backend Smoke Checks
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/smoke_backend.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install backend deps
+        run: |
+          pip install -r backend/requirements.txt
+      - name: Run backend (mock mode)
+        env:
+          GITHUB_REPO_OWNER: owner
+          GITHUB_REPO_NAME: repo
+          GITHUB_PAT: test
+          AUTOMATION_MOCK_MODE: 'true'
+          FRONTEND_ORIGIN: http://localhost:5173
+        run: |
+          nohup python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+          sleep 2
+      - name: Curl endpoints
+        run: |
+          curl -fsS http://localhost:8000/health
+          curl -fsS http://localhost:8000/metrics
+          curl -fsS 'http://localhost:8000/api/automation/runs'

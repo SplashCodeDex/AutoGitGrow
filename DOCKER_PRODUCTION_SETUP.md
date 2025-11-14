@@ -101,6 +101,8 @@ Your application is now production-ready and can be deployed on:
 
 ## 🔧 Production Considerations
 
+Note: In local development, the backend now auto-loads variables from `.env`/`.env.local`. In production Docker or managed platforms, set environment variables via your orchestrator or secrets manager rather than relying on `.env` files.
+
 1. **Environment Variables**: Update `.env` with production values
 2. **Database**: Consider using managed database services in production
 3. **SSL/TLS**: Add reverse proxy (nginx/traefik) for HTTPS

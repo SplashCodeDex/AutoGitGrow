@@ -148,6 +148,14 @@ DIGITALOCEAN_ACCESS_TOKEN=your-do-token
 
 ## 🌍 Environment Configuration
 
+### Local Development (no Docker)
+- Backend auto-loads `.env` and `.env.local`.
+- Default local DB is SQLite; no DB_* vars needed.
+- Start backend: `npm run start:backend` (http://localhost:8000)
+- Start frontend: `npm run start:frontend` (http://localhost:3000)
+- Both: `npm start`
+
+
 ### Production Environment Variables
 
 #### Required:
@@ -179,6 +187,10 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
 # Check health
 curl http://localhost:80        # Frontend
+
+- VITE_API_URL: Base URL of your backend (e.g., https://api.example.com) for the frontend.
+- VITE_AUTOMATION_API_KEY: If AUTOMATION_API_KEY is set on the backend, mirror the same secret here so the UI can send the X-Automation-Key header.
+
 curl http://localhost:8000/api/stats  # Backend API
 ```
 
@@ -196,6 +208,17 @@ docker compose logs db
 ```
 
 #### 2. Frontend Can't Reach Backend
+
+Security and Automations
+- FRONTEND_ORIGIN: Set to your deployed frontend origin to restrict CORS.
+- AUTOMATION_API_KEY: Set a strong secret to protect /api/automation/* endpoints. Provide the same value to the frontend as VITE_AUTOMATION_API_KEY.
+- AUTOMATION_RATE_LIMIT_CAPACITY and AUTOMATION_RATE_LIMIT_REFILL_PER_SEC: Tune per-IP rate limiting.
+- AUTOMATION_DEFAULT_REF: Default branch/ref for workflow_dispatch (e.g., main).
+- AUTOMATION_MOCK_MODE: Set to true for CI smoke checks; backend returns synthetic data and does not call GitHub.
+
+GitHub token scopes
+- GITHUB_PAT must include the workflow scope. The backend logs a warning on startup if the classic token scopes header does not include workflow.
+
 ```bash
 # Check VITE_API_URL points to correct backend
 # For Render: https://your-backend.onrender.com

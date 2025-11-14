@@ -40,6 +40,31 @@ If you have an idea for a new feature, please open an issue on GitHub. Please in
 
 ## Development Environment
 
+### Local Development (no Docker)
+```bash
+# 1) Install deps
+npm ci
+pip install -r backend/requirements.txt
+
+# 2) Create .env (auto-loaded by backend)
+cp .env.example .env
+# Edit .env as needed (GITHUB_PAT, etc.)
+# Important: Leave VITE_API_URL unset for local dev to use Vite proxy (/api)
+# For first run DB init
+# ENABLE_SQLALCHEMY_CREATE_ALL=true
+
+# 3) Run backend and frontend (in separate terminals)
+npm run start:backend   # http://localhost:8000
+npm run start:frontend  # http://localhost:3000
+# or run both together
+npm start
+```
+
+Notes:
+- Backend auto-loads .env and optional .env.local (overrides).
+- SQLite is used by default for local dev; no DB_* variables required.
+- For Automations UI, set GITHUB_REPO_OWNER/NAME and GITHUB_PAT with workflow scope. If you set AUTOMATION_API_KEY on the backend, also set VITE_AUTOMATION_API_KEY in the frontend.
+
 ### Local Development with Docker
 ```bash
 # Clone and setup

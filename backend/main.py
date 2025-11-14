@@ -2,15 +2,30 @@ from typing import List
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from dotenv import load_dotenv, find_dotenv
+# Auto-load environment variables for local development
+load_dotenv(find_dotenv(), override=False)  # .env
+load_dotenv(find_dotenv('.env.local'), override=True)  # optional overrides
 import requests
+import asyncio
+import time as _t
 from sqlalchemy.orm import Session
-from utils import logger
+from backend.utils import logger
 
-import crud, models, schemas
-from database import SessionLocal, engine
-from health import router as health_router
+import backend.crud as crud
+import backend.models as models
+import backend.schemas as schemas
+from backend.database import SessionLocal, engine
+from backend.health import router as health_router
 
-models.Base.metadata.create_all(bind=engine)
+if os.getenv("ENABLE_SQLALCHEMY_CREATE_ALL", "false").lower() == "true":
+    models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title="AutoGitGrow API",
+    description="GitHub automation and analytics API",
+    version="2.0.0"
+)
 
 from fastapi.responses import JSONResponse
 
@@ -31,6 +46,37 @@ async def validate_github_token():
     except Exception as e:
         logger.warning("Token validation failed: %s", e)
 
+@app.on_event("startup")
+async def start_alert_monitor():
+    webhook = os.getenv("SLACK_WEBHOOK_URL")
+    max_stale = int(os.getenv("ALERT_MAX_STALE_SECONDS", "3600"))
+    max_fail = int(os.getenv("ALERT_MAX_FAILURES", "3"))
+    if not webhook:
+        return
+    from health import metrics
+
+    async def _loop():
+        while True:
+            try:
+                now = _t.time()
+                stale = []
+                for wf, ts in metrics.get("automation_last_success_timestamp", {}).items():
+                    if now - ts > max_stale:
+                        stale.append((wf, int(now - ts)))
+                fails = metrics.get("automation_dispatch_failures", 0)
+                if stale or fails >= max_fail:
+                    text = {
+                        "text": f"AutoGitGrow alert: stale={stale} failures={fails}"
+                    }
+                    try:
+                        requests.post(webhook, json=text, timeout=5)
+                    except Exception:
+                        pass
+                await asyncio.sleep(60)
+            except Exception:
+                await asyncio.sleep(60)
+    asyncio.create_task(_loop())
+
 app = FastAPI(
     title="AutoGitGrow API",
     description="GitHub automation and analytics API",
@@ -40,15 +86,20 @@ app = FastAPI(
 # CORS: restrict to configured frontend origin if provided
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN")
 if FRONTEND_ORIGIN:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[FRONTEND_ORIGIN],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"]
-    )
+    allow_origins = [FRONTEND_ORIGIN]
+else:
+    # Default for local development: allow the Vite dev server origin
+    allow_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 # Routers
-from automation import router as automation_router
+from backend.automation import router as automation_router
 # Include health check routes
 app.include_router(health_router, tags=["health"]) 
 app.include_router(automation_router, tags=["automation"])
@@ -101,6 +152,7 @@ def get_db():
 
 
 @app.post("/events/", response_model=schemas.Event)
+@app.post("/api/events/", response_model=schemas.Event)
 def create_event_for_user(event: schemas.EventCreate, db: Session = Depends(get_db)):
     logger.info(f"Received request to create event for user: {event.source_user_id} and {event.target_user_id}")
     return crud.create_event(db=db, event=event, source_user_id=event.source_user_id, target_user_id=event.target_user_id, repository_name=event.repository_name)

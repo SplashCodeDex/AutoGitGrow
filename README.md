@@ -87,6 +87,12 @@ PAT_TOKEN=your_github_personal_access_token
 BOT_USER=your_github_username
 GEMINI_API_KEY=your_google_gemini_api_key
 VITE_API_URL=http://localhost:8000 # For local frontend to communicate with local backend
+# New (security & automation)
+FRONTEND_ORIGIN=http://localhost:5173 # Restrict CORS in production to your frontend
+AUTOMATION_API_KEY= # Optional: protect automation endpoints; set a strong secret in production
+VITE_AUTOMATION_API_KEY= # Optional: mirror the automation key for frontend to send header
+AUTOMATION_RATE_LIMIT_CAPACITY=10
+AUTOMATION_RATE_LIMIT_REFILL_PER_SEC=0.5
 ```
 
 *   **`PAT_TOKEN`**: Your GitHub Personal Access Token (scopes: `user:follow`, `public_repo`).
@@ -137,6 +143,13 @@ npm run dev
 The frontend development server will start, usually on `http://localhost:5173`.
 
 ### 6. GitHub Actions Setup (for automation and CI/CD)
+
+#### Securing on-demand automations
+- Set AUTOMATION_API_KEY and VITE_AUTOMATION_API_KEY to the same secret to require authenticated dispatches from the UI.
+- Set FRONTEND_ORIGIN in the backend to restrict CORS to your dashboard domain.
+- Adjust AUTOMATION_RATE_LIMIT_* to tune per-IP rate limiting on /api/automation/*.
+- Ensure your GITHUB_PAT includes the workflow scope (the backend validates and logs a warning on startup).
+
 
 For automated runs on GitHub and Continuous Integration/Continuous Deployment (CI/CD), you'll need to configure repository secrets and variables:
 
@@ -256,6 +269,31 @@ AutoGitGrow is designed to help you network organically, not to spam. Please use
 Remember, genuine interaction is always the best way to grow your network!
 
 
+
+## Local development (no Docker)
+
+The backend now auto-loads environment variables from `.env` and optionally `.env.local` (overrides). Create a `.env` file at the repo root with values like:
+
+```
+# Frontend config
+VITE_API_URL=http://localhost:8000
+# Optional for Automations
+GITHUB_REPO_OWNER=your-username-or-org
+GITHUB_REPO_NAME=your-repo
+GITHUB_PAT=ghp_xxx
+# First run DB init
+ENABLE_SQLALCHEMY_CREATE_ALL=true
+```
+
+Run services:
+- Backend: `npm run start:backend` (FastAPI at http://localhost:8000)
+- Frontend: `npm run start:frontend` (Vite at http://localhost:3000, proxies /api to backend)
+- Both: `npm start`
+
+Tips:
+- Use `.env.local` to override anything locally (it will override `.env`).
+- For the first backend start, set `ENABLE_SQLALCHEMY_CREATE_ALL=true` to create the SQLite tables.
+- For Automations in the UI, ensure your `GITHUB_PAT` has the `workflow` scope and repo details are correct.
 
 ## ⭐ Join our community!
 

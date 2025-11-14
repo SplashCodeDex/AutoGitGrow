@@ -1,4 +1,4 @@
-import '@/src/index.css';
+import '@/index.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Github, FileText, FileBadge, LayoutDashboard, Settings, Menu } from 'lucide-react';
@@ -10,7 +10,9 @@ import MarkdownViewer from './src/components/MarkdownViewer';
 import TextViewer from './src/components/TextViewer';
 import NewSidebar from './src/components/NewSidebar';
 import { Smoke } from './src/components/ui/smoke';
+import ConnectivityBanner from './src/components/ConnectivityBanner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { useTheme } from './src/lib/state';
 
 const queryClient = new QueryClient();
@@ -46,21 +48,23 @@ const App = () => {
   };
 
   return (
-    <Smoke className="h-screen"> {/* Put h-screen back on Smoke */}
-      <div className="h-full flex text-slate-700 dark:text-slate-300 font-sans antialiased"> {/* This div should be h-full, not h-screen */}
-        <NewSidebar 
-          navItems={navItems} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab}
-          isDarkMode={isDarkMode}
-          toggleTheme={handleToggleTheme}
-        />
-        
-        <main className={`flex-1 p-4 sm:p-8 overflow-y-auto`}>
-          {renderContent()}
-        </main>
+    <Smoke className="h-screen">
+      <div className="h-full flex flex-col">
+        <ConnectivityBanner />
+        <div className="h-full flex text-slate-700 dark:text-slate-300 font-sans antialiased">
+          <NewSidebar 
+            navItems={navItems} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab}
+            isDarkMode={isDarkMode}
+            toggleTheme={handleToggleTheme}
+          />
+          <main className={`flex-1 p-4 sm:p-8 overflow-y-auto`}>
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </Smoke> // Close the Smoke component
+    </Smoke>
   );
 };
 
@@ -71,7 +75,9 @@ if (container && !container.dataset.reactRootInitialized) {
   root.render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </QueryClientProvider>
     </React.StrictMode>
   );

@@ -55,6 +55,8 @@ ENABLE_FIREBASE_DEPLOY=false
 
 ## 🔐 **REQUIRED SECRETS SETUP**
 
+Note: For local development (no Docker), the backend auto-loads `.env` and `.env.local`. For CI/CD, use GitHub Secrets and Variables.
+
 ### **Universal Secrets (Always Required)**
 ```bash
 # Docker registry access

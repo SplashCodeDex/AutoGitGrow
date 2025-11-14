@@ -2,6 +2,12 @@
 
 This directory contains the Python scripts that power AutoGitGrow.
 
+Quick start (local, no Docker):
+- Create `.env` from `.env.example` (auto-loaded by backend not required for scripts, but you can `export` directly too)
+- Required for scripts: `PAT_TOKEN` and `BOT_USER`
+- Optional: `FOLLOWERS_PER_RUN`, `GITHUB_*` for workflow-related behavior
+- Run: `python -u scripts/autotrack.py`, `python -u scripts/autostarback.py`, etc.
+
 | Script | Description |
 |---|---|
 | `gitgrow.py` | The main script for following and unfollowing users. It follows a set number of users from `config/usernames.txt`, and also follows back any new followers. |

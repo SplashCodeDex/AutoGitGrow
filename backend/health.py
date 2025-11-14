@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
-from database import SessionLocal
-import psutil
+from backend.database import SessionLocal
 import os
 from datetime import datetime
 
@@ -50,6 +49,8 @@ async def detailed_health_check():
     
     # System resource check
     try:
+        # Lazy import to avoid hard dependency in environments without psutil
+        import psutil  # type: ignore
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
         health_data["checks"]["system"] = {
@@ -68,8 +69,12 @@ async def detailed_health_check():
         health_data["checks"]["system"] = {"status": "error", "message": str(e)}
     
     # Environment check
-    required_env = ["PAT_TOKEN", "BOT_USER", "DATABASE_URL"]
-    missing_env = [env for env in required_env if not os.getenv(env)]
+    token_present = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
+    missing_env = []
+    if not token_present:
+        missing_env.append("GITHUB_PAT (or PAT_TOKEN)")
+    if not os.getenv("BOT_USER"):
+        missing_env.append("BOT_USER")
     
     if missing_env:
         health_data["checks"]["environment"] = {

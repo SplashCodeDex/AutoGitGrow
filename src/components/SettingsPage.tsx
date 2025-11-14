@@ -55,7 +55,7 @@ const SettingsPage = () => {
                         />
                         {error && <p className="text-sm text-red-500 dark:text-red-400 mt-2">{error}</p>}
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                            Note: Saving changes from this dashboard is not yet supported. Please edit <code>config/whitelist.txt</code> directly in your repository.
+                            Note: Saving changes from this dashboard is not yet supported. Please edit <code>public/whitelist.txt</code> in your repository (served at <code>/whitelist.txt</code>).
                         </p>
                     </div>
 
