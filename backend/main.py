@@ -1,5 +1,8 @@
 from typing import List
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+import os
+import requests
 from sqlalchemy.orm import Session
 from utils import logger
 
@@ -11,14 +14,44 @@ models.Base.metadata.create_all(bind=engine)
 
 from fastapi.responses import JSONResponse
 
+@app.on_event("startup")
+async def validate_github_token():
+    # Validate token scopes if possible
+    try:
+        token = os.getenv("GITHUB_PAT")
+        owner = os.getenv("GITHUB_REPO_OWNER")
+        repo = os.getenv("GITHUB_REPO_NAME")
+        if token and owner and repo:
+            headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+            r = requests.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers, timeout=10)
+            # For classic tokens, GitHub returns X-OAuth-Scopes header
+            scopes = r.headers.get("X-OAuth-Scopes", "")
+            if scopes and "workflow" not in scopes:
+                logger.warning("GITHUB_PAT may be missing 'workflow' scope. Current scopes: %s", scopes)
+    except Exception as e:
+        logger.warning("Token validation failed: %s", e)
+
 app = FastAPI(
     title="AutoGitGrow API",
     description="GitHub automation and analytics API",
     version="2.0.0"
 )
 
+# CORS: restrict to configured frontend origin if provided
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN")
+if FRONTEND_ORIGIN:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[FRONTEND_ORIGIN],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"]
+    )
+# Routers
+from automation import router as automation_router
 # Include health check routes
-app.include_router(health_router, tags=["health"])
+app.include_router(health_router, tags=["health"]) 
+app.include_router(automation_router, tags=["automation"])
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
@@ -27,6 +60,34 @@ async def generic_exception_handler(request, exc):
         status_code=500,
         content={"message": "An internal server error occurred. Please try again later."},
     )
+
+# Simple in-memory rate limiter (per-IP token bucket)
+from time import time
+from typing import Dict
+
+RATE_LIMIT_CAPACITY = int(os.getenv("AUTOMATION_RATE_LIMIT_CAPACITY", "10"))  # tokens
+RATE_LIMIT_REFILL_PER_SEC = float(os.getenv("AUTOMATION_RATE_LIMIT_REFILL_PER_SEC", "0.5"))  # tokens/sec
+
+_buckets: Dict[str, Dict[str, float]] = {}
+
+@app.middleware("http")
+async def rate_limit_middleware(request, call_next):
+    if request.url.path.startswith("/api/automation/"):
+        now = time()
+        ip = request.client.host if request.client else "unknown"
+        b = _buckets.get(ip)
+        if not b:
+            b = {"tokens": float(RATE_LIMIT_CAPACITY), "ts": now}
+        else:
+            elapsed = now - b["ts"]
+            b["tokens"] = min(float(RATE_LIMIT_CAPACITY), b["tokens"] + elapsed * RATE_LIMIT_REFILL_PER_SEC)
+            b["ts"] = now
+        if b["tokens"] < 1.0:
+            return JSONResponse(status_code=429, content={"detail": "Too Many Requests"})
+        b["tokens"] -= 1.0
+        _buckets[ip] = b
+    response = await call_next(request)
+    return response
 
 # Dependency
 def get_db():

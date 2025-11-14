@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { UserPlus, UserMinus, Users, Star, AlertTriangle } from 'lucide-react';
 import GeminiInsights from './GeminiInsights';
+import AutomationsPanel from './AutomationsPanel';
 import StatCard from './StatCard';
 import SkeletonCard from './SkeletonCard';
 import PageHeader from './PageHeader';
@@ -249,7 +250,12 @@ const Dashboard = () => {
                     ))}
                 </div>
             </div>
-            {!isLoading && <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} /></div>}
+            {!isLoading && (
+                <>
+                  <div className="mt-8"><GeminiInsights stats={stats} growthData={growthData} /></div>
+                  <div className="mt-8"><AutomationsPanel /></div>
+                </>
+            )}
         </>
     )
 };

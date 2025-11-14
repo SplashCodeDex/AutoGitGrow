@@ -7,6 +7,18 @@ from datetime import datetime
 
 router = APIRouter()
 
+# Simple in-process metrics
+metrics = {
+    "automation_dispatch_count": 0,
+    "automation_dispatch_failures": 0,
+    "automation_last_success_timestamp": {}
+}
+
+
+@router.get("/metrics")
+async def metrics_endpoint():
+    return metrics
+
 @router.get("/health")
 async def health_check():
     """Basic health check endpoint"""
