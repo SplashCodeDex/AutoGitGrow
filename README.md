@@ -6,7 +6,7 @@
 
 # AutoGitGrow 🚀
 
-AutoGitGrow is your personal GitHub networking assistant. It's an automation tool designed to help you **grow** and **nurture** your developer network organically. 
+AutoGitGrow is your personal GitHub networking assistant. It's an automation tool designed to help you **grow** and **nurture** your developer network organically.
 
 🚀 **NEW**: Enterprise-grade CI/CD pipeline with automated deployment to Render, Railway, DigitalOcean, and Docker Hub!
 
@@ -94,58 +94,6 @@ VITE_AUTOMATION_API_KEY= # Optional: mirror the automation key for frontend to s
 AUTOMATION_RATE_LIMIT_CAPACITY=10
 AUTOMATION_RATE_LIMIT_REFILL_PER_SEC=0.5
 ```
-
-*   **`PAT_TOKEN`**: Your GitHub Personal Access Token (scopes: `user:follow`, `public_repo`).
-*   **`BOT_USER`**: Your GitHub username.
-*   **`GEMINI_API_KEY`**: Your Google Gemini API Key (required for AI Insights).
-*   **`VITE_API_URL`**: The URL where your backend API is accessible. For local development, this is `http://localhost:8000`.
-
-### 3. Local Development with Docker Compose
-
-AutoGitGrow is designed to run using Docker Compose, which orchestrates all services (backend, frontend, database, scheduler).
-
-1.  **Ensure Docker is Running:** Make sure Docker Desktop (or your Docker daemon) is running on your machine.
-2.  **Start the Application:** From the project root, run:
-
-    ```bash
-docker compose up --build
-    ```
-
-    This command will:
-    *   Build the Docker images for your backend and frontend.
-    *   Start all services defined in `docker-compose.yml`.
-    *   Apply database migrations.
-
-    The backend API will be available at `http://localhost:8000` and the frontend dashboard at `http://localhost:80`.
-
-### 4. Backend API Setup (Manual - for debugging/development outside Docker)
-
-If you need to run the backend API directly for debugging or specific development tasks outside of Docker Compose:
-
-```bash
-cd backend
-pip install -r requirements.txt
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-The backend server will start on `http://localhost:8000`.
-
-### 5. Frontend Dashboard Setup (Manual - for debugging/development outside Docker)
-
-If you need to run the frontend dashboard directly for debugging or specific development tasks outside of Docker Compose:
-
-```bash
-# From the project root directory
-npm install
-npm run dev
-```
-
-The frontend development server will start, usually on `http://localhost:5173`.
-
-### 6. GitHub Actions Setup (for automation and CI/CD)
-
-#### Securing on-demand automations
-- Set AUTOMATION_API_KEY and VITE_AUTOMATION_API_KEY to the same secret to require authenticated dispatches from the UI.
 - Set FRONTEND_ORIGIN in the backend to restrict CORS to your dashboard domain.
 - Adjust AUTOMATION_RATE_LIMIT_* to tune per-IP rate limiting on /api/automation/*.
 - Ensure your GITHUB_PAT includes the workflow scope (the backend validates and logs a warning on startup).
@@ -232,7 +180,7 @@ DOCKER_HUB_TOKEN=your-dockerhub-access-token
 **Optional (for auto-deployment):**
 ```bash
 RENDER_API_KEY=your-render-api-key           # For Render
-RAILWAY_TOKEN=your-railway-token              # For Railway  
+RAILWAY_TOKEN=your-railway-token              # For Railway
 DIGITALOCEAN_ACCESS_TOKEN=your-do-token       # For DigitalOcean
 ```
 
@@ -319,44 +267,36 @@ Your username will be **automatically** added to the master `usernames.txt` list
 
 ```
 ├── .github/
-│   └── workflows/              # GitHub Actions workflows (run.yml, manual_follow.yml, etc.)
+│   └── workflows/              # GitHub Actions workflows
 ├── backend/                    # FastAPI Backend API
-│   ├── crud.py                 # CRUD operations for database
-│   ├── database.py             # Database connection and session
-│   ├── main.py                 # FastAPI application entry point
+│   ├── Dockerfile              # Backend Docker image definition
+│   ├── crud.py                 # CRUD operations
+│   ├── database.py             # Database connection
+│   ├── main.py                 # App entry point
 │   ├── models.py               # SQLAlchemy models
-│   ├── requirements.txt        # Python dependencies for backend
-│   └── schemas.py              # Pydantic schemas for data validation
-├── config/
-│   ├── follow_dates.json       # Stores dates for follow actions
-│   ├── organizations.txt       # List of organizations
-│   ├── usernames.txt           # 91,000+ community members
-│   └── whitelist.txt           # Accounts to always skip
-├── public/
-│   ├── .gitkeep                # Placeholder for public assets
-│   └── stargazer_state.json    # State for stargazer tracking
-├── scripts/
-│   ├── autostarback.py         # Automates starring back
-│   ├── autostargrow.py         # Automates star growth
-│   ├── autotrack.py            # Tracks stargazers
-│   ├── autounstarback.py       # Automates unstarring
-│   ├── generate_batch_size.py  # Generates batch sizes
-│   ├── gitgrow.py              # Main follow/unfollow driver
-│   ├── maintainer.py           # Maintenance scripts
-│   ├── README.md               # Documentation for scripts
-│   └── shoutouts.py            # Stargazer shoutouts
-├── src/                        # Frontend source code
-│   └── components/             # React components (Dashboard.tsx, etc.)
-├── .env.example                # Example environment variables file
-├── index.html                  # Frontend entry point
-├── package.json                # Frontend dependencies and scripts
-├── package-lock.json           # Frontend dependency lock file
-├── README.md                   # Project documentation
-├── requirements.txt            # Python dependencies for main project (if any)
-├── shell.nix                   # Nix shell configuration
-├── sql_app.db                  # SQLite database file
-├── tsconfig.json               # TypeScript configuration
-└── vite.config.ts              # Vite frontend configuration
+│   ├── requirements.txt        # Python dependencies
+│   ├── schemas.py              # Pydantic schemas
+│   └── utils.py                # Shared utility functions
+├── config/                     # Configuration files
+│   ├── usernames.txt           # Target usernames
+│   └── whitelist.txt           # Protected accounts
+├── deploy/                     # Deployment scripts
+├── docs/                       # Documentation
+├── frontend/                   # Vite/React Frontend
+│   ├── Dockerfile              # Frontend Docker image definition
+│   ├── public/                 # Public assets (stargazer_state.json)
+│   ├── src/                    # React source code
+│   ├── index.html              # Entry HTML
+│   ├── package.json            # Frontend dependencies
+│   └── vite.config.ts          # Vite config
+├── scripts/                    # Automation Scripts
+│   ├── autostargrow.py         # Star growth automation
+│   ├── gitgrow.py              # Main automation driver
+│   └── ...                     # Other scripts
+├── .env.example                # Environment variables template
+├── docker-compose.yml          # Docker services definition
+├── package.json                # Root orchestrator scripts
+└── README.md                   # Project documentation
 ```
 
 ## 🛠️ Manual Troubleshooting Runners (optional)

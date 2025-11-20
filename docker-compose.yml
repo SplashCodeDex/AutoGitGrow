@@ -29,6 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
       PAT_TOKEN: ${PAT_TOKEN}
+      GITHUB_PAT: ${GITHUB_PAT}
       BOT_USER: ${BOT_USER}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     depends_on:
@@ -36,7 +37,7 @@ services:
       - init-db # Ensure migrations are applied before backend starts
 
   frontend:
-    build: .
+    build: ./frontend
     restart: always
     ports:
       - "80:80"
@@ -54,6 +55,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
       PAT_TOKEN: ${PAT_TOKEN}
+      GITHUB_PAT: ${GITHUB_PAT}
       BOT_USER: ${BOT_USER}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     # Command to install cron and start it, directing logs to stdout

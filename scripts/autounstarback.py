@@ -8,41 +8,17 @@ import random
 import requests
 import functools
 from pathlib import Path
+from datetime import datetime, timezone
 from github import Github, GithubException
+import argparse
 
 # Add parent directory to sys.path to allow importing from backend
 sys.path.append(str(Path(__file__).parent.parent))
-from backend.utils import logger
-from datetime import datetime, timedelta, timezone
+from backend.utils import logger, github_retry
 
-def github_retry(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except GithubException as e:
-                if e.status == 403 and 'rate limit exceeded' in e.data['message']:
-                    handle_rate_limit(args[0])  # Assuming gh object is the first argument
-                else:
-                    logger.error(f"GitHub API error in {func.__name__}: {e}")
-                    raise
-    return wrapper
-
-TOKEN = os.getenv("PAT_TOKEN")
+TOKEN = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
 BOT_USER = os.getenv("BOT_USER")
-STATE_PATH = Path(__file__).parent.parent / "public" / "stargazer_state.json"
-
-def handle_rate_limit(gh):
-    """Pauses script execution until the GitHub API rate limit is reset."""
-    rate_limit = gh.get_rate_limit()
-    reset_time = rate_limit.core.reset.timestamp()
-    sleep_duration = max(0, reset_time - time.time())
-    if sleep_duration > 0:
-        logger.warning(f"Rate limit exceeded. Sleeping for {sleep_duration:.2f} seconds.")
-        time.sleep(sleep_duration)
-
-import argparse
+STATE_PATH = Path(__file__).parent.parent / "frontend" / "public" / "stargazer_state.json"
 
 def main():
     parser = argparse.ArgumentParser()
@@ -53,8 +29,9 @@ def main():
     def send_event(event_type, username):
         """Sends an event to the backend."""
         try:
+            api_url = os.getenv("API_URL", "http://localhost:8000")
             response = requests.post(
-                "http://localhost:8000/events/",
+                f"{api_url}/events/",
                 params={"username": username},
                 json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
             )
@@ -64,7 +41,7 @@ def main():
 
     logger.info("=== GitGrowBot autounstarback.py started ===")
     if not TOKEN:
-        logger.error("PAT_TOKEN required.")
+        logger.error("GITHUB_PAT (or PAT_TOKEN) required.")
         sys.exit(1)
     if not STATE_PATH.exists():
         logger.error(f"{STATE_PATH} not found.")
@@ -90,7 +67,7 @@ def main():
         if excess > 0:
             for i in range(excess):
                 repo_name = starred_back.pop()
-                
+
                 @github_retry
                 def get_repo_with_retry(gh_obj, repo_name_str):
                     return gh_obj.get_repo(repo_name_str)

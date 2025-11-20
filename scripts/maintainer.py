@@ -14,9 +14,9 @@ from backend.utils import logger
 
 def main():
     load_dotenv()
-    token = os.getenv("PAT_TOKEN")
+    token = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
     if not token:
-        logger.critical("Error: PAT_TOKEN environment variable is required")
+        logger.critical("Error: GITHUB_PAT (or PAT_TOKEN) environment variable is required")
         sys.exit(1)
     gh = Github(token)
 

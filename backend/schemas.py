@@ -46,3 +46,39 @@ class FollowerHistory(FollowerHistoryBase):
 class ReciprocityData(BaseModel):
     followed_back: List[str]
     not_followed_back: List[str]
+
+class WhitelistUpdate(BaseModel):
+    content: str
+
+class WhitelistItemBase(BaseModel):
+    username: str
+
+class WhitelistItemCreate(WhitelistItemBase):
+    reciprocityRate: float
+
+class WhitelistItem(WhitelistItemBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+class UserStats(BaseModel):
+    followersGained: int
+    followBacks: int
+    unfollowed: int
+    stargazers: int
+    reciprocityRate: float
+
+class GeminiInsightRequest(BaseModel):
+    stats: UserStats
+    growthData: List[FollowerHistory]
+
+class UserAnalysisRequest(BaseModel):
+    username: str
+    bio: Optional[str] = None
+    readme_content: Optional[str] = None
+    recent_activity: Optional[str] = None
+
+class UserAnalysisResponse(BaseModel):
+    username: str
+    is_relevant: bool
+    reason: str
+    confidence_score: float

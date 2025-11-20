@@ -28,8 +28,8 @@ def github_retry(func):
     return wrapper
 
 BOT_USER = os.getenv("BOT_USER")
-TOKEN = os.getenv("PAT_TOKEN")
-STATE_PATH = Path(__file__).parent.parent / "public" / "stargazer_state.json"
+TOKEN = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
+STATE_PATH = Path(__file__).parent.parent / "frontend" / "public" / "stargazer_state.json"
 
 def handle_rate_limit(gh):
     """Pauses script execution until the GitHub API rate limit is reset."""
@@ -78,7 +78,7 @@ def main():
 
     for idx, repo in enumerate(repos):
         logger.info(f"[{idx+1}/{len(repos)}] Processing repo: {repo.full_name}")
-        
+
         @github_retry
         def get_stargazers_with_retry(repo_obj):
             return repo_obj.get_stargazers()
@@ -101,7 +101,7 @@ def main():
     # Fetch all repos YOU have starred
     logger.info("Fetching all repos starred by the bot user...")
     starred_repos = []
-    
+
     @github_retry
     def get_starred_with_retry(me_obj):
         return me_obj.get_starred()

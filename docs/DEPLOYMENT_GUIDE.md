@@ -180,25 +180,6 @@ GEMINI_API_KEY=AIzaxxxxxxx          # For AI insights feature
 
 ```bash
 # Local testing
-docker compose up --build
-
-# Run test suite
-docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
-
-# Check health
-curl http://localhost:80        # Frontend
-
-- VITE_API_URL: Base URL of your backend (e.g., https://api.example.com) for the frontend.
-- VITE_AUTOMATION_API_KEY: If AUTOMATION_API_KEY is set on the backend, mirror the same secret here so the UI can send the X-Automation-Key header.
-
-curl http://localhost:8000/api/stats  # Backend API
-```
-
-## 🚨 Troubleshooting
-
-### Common Issues:
-
-#### 1. Database Connection Failed
 ```bash
 # Check DATABASE_URL format
 postgresql://user:password@host:port/database
@@ -244,7 +225,7 @@ GitHub token scopes
 All platforms provide built-in monitoring:
 
 - **Render**: Dashboard shows logs, metrics, deployments
-- **Railway**: Real-time logs and performance metrics  
+- **Railway**: Real-time logs and performance metrics
 - **DigitalOcean**: App insights, scaling metrics, alerts
 
 ### Custom Monitoring

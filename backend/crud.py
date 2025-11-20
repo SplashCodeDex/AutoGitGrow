@@ -63,7 +63,7 @@ def get_bot_user_id(db: Session):
     if not bot_username:
         logger.warning("BOT_USER environment variable not set.")
         return None
-    
+
     bot_user = get_user_by_username(db, username=bot_username)
     if not bot_user:
         logger.info(f"Bot user '{bot_username}' not found, creating it.")
@@ -114,7 +114,7 @@ def get_suggested_users(db: Session, limit: int = 5):
     suggested_users = []
     for user_id_tuple in starred_by_users_ids:
         starred_user_id = user_id_tuple[0]
-        
+
         # Check if the bot has already followed this user
         bot_followed_user = db.query(models.Event).filter(
             models.Event.event_type == "follow",
@@ -127,7 +127,7 @@ def get_suggested_users(db: Session, limit: int = 5):
             user = db.query(models.User).filter(models.User.id == starred_user_id).first()
             if user:
                 suggested_users.append(user.username)
-        
+
         if len(suggested_users) >= limit:
             break
     logger.info(f"Found {len(suggested_users)} suggested users.")
@@ -149,14 +149,14 @@ def get_follow_backs(db: Session):
     follow_backs_count = 0
     for user_id_tuple in bot_followed_users_ids:
         followed_user_id = user_id_tuple[0]
-        
+
         # Check if this user followed the bot back
         user_followed_bot_back = db.query(models.Event).filter(
             models.Event.event_type == "follow",
             models.Event.source_user_id == followed_user_id,
             models.Event.target_user_id == bot_user_id
         ).first()
-        
+
         if user_followed_bot_back:
             follow_backs_count += 1
     logger.info(f"Calculated {follow_backs_count} follow backs.")
@@ -203,7 +203,7 @@ def get_stats(db: Session):
     stars = db.query(models.Event).filter(models.Event.event_type == "star").count()
     unstars = db.query(models.Event).filter(models.Event.event_type == "unstar").count()
     growth_stars = db.query(models.Event).filter(models.Event.event_type == "growth_star").count()
-    
+
     follow_backs = get_follow_backs(db)
     total_follows = followers # Assuming 'followers' here means total follows made by the bot
     reciprocity_rate = (follow_backs / total_follows) * 100 if total_follows > 0 else 0
@@ -229,3 +229,51 @@ def create_follower_history(db: Session, count: int):
 def get_follower_history(db: Session, skip: int = 0, limit: int = 100):
     logger.info(f"Fetching follower history with skip={skip}, limit={limit}.")
     return db.query(models.FollowerHistory).offset(skip).limit(limit).all()
+
+def get_bot_user_details(db: Session):
+    logger.info("Fetching bot user details.")
+    bot_username = os.getenv("BOT_USER")
+    if not bot_username:
+        logger.warning("BOT_USER environment variable not set.")
+        return None
+
+    g = Github(os.getenv("GITHUB_PAT"))
+    try:
+        user = g.get_user(bot_username)
+        return {
+            "username": user.login,
+            "avatar_url": user.avatar_url,
+            "html_url": user.html_url,
+            "name": user.name,
+            "bio": user.bio
+        }
+    except Exception as e:
+        logger.error(f"Error fetching bot user details from GitHub: {e}")
+        # Fallback to basic info if GitHub API fails
+        return {"username": bot_username, "avatar_url": None, "html_url": f"https://github.com/{bot_username}", "name": bot_username, "bio": "GitHub Bot"}
+
+def get_whitelist(db: Session):
+    logger.info("Fetching whitelist.")
+    return db.query(models.Whitelist).all()
+
+def add_whitelist_user(db: Session, username: str):
+    logger.info(f"Adding user to whitelist: {username}")
+    db_item = models.Whitelist(username=username)
+    try:
+        db.add(db_item)
+        db.commit()
+        db.refresh(db_item)
+        return db_item
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to add user to whitelist: {e}")
+        raise HTTPException(status_code=400, detail="User already in whitelist or other error.")
+
+def remove_whitelist_user(db: Session, username: str):
+    logger.info(f"Removing user from whitelist: {username}")
+    db_item = db.query(models.Whitelist).filter(models.Whitelist.username == username).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+        return {"message": "User removed from whitelist"}
+    raise HTTPException(status_code=404, detail="User not found in whitelist")

@@ -36,7 +36,7 @@ async def detailed_health_check():
         "service": "autogitgrow-backend",
         "checks": {}
     }
-    
+
     # Database connectivity check
     try:
         db = SessionLocal()
@@ -46,7 +46,7 @@ async def detailed_health_check():
     except Exception as e:
         health_data["checks"]["database"] = {"status": "unhealthy", "message": str(e)}
         health_data["status"] = "unhealthy"
-    
+
     # System resource check
     try:
         # Lazy import to avoid hard dependency in environments without psutil
@@ -59,15 +59,15 @@ async def detailed_health_check():
             "disk_percent": disk.percent,
             "cpu_percent": psutil.cpu_percent(interval=1)
         }
-        
+
         # Alert if resources are high
         if memory.percent > 90 or disk.percent > 90:
             health_data["checks"]["system"]["status"] = "warning"
             health_data["status"] = "degraded"
-            
+
     except Exception as e:
         health_data["checks"]["system"] = {"status": "error", "message": str(e)}
-    
+
     # Environment check
     token_present = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
     missing_env = []
@@ -75,16 +75,38 @@ async def detailed_health_check():
         missing_env.append("GITHUB_PAT (or PAT_TOKEN)")
     if not os.getenv("BOT_USER"):
         missing_env.append("BOT_USER")
-    
+
     if missing_env:
         health_data["checks"]["environment"] = {
-            "status": "unhealthy", 
+            "status": "unhealthy",
             "missing_vars": missing_env
         }
         health_data["status"] = "unhealthy"
     else:
         health_data["checks"]["environment"] = {"status": "healthy"}
-    
+
+    # GitHub Rate Limit Check
+    if token_present:
+        try:
+            import requests
+            token = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
+            headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+            r = requests.get("https://api.github.com/rate_limit", headers=headers, timeout=5)
+            if r.status_code == 200:
+                rate = r.json().get("rate", {})
+                health_data["checks"]["github_api"] = {
+                    "status": "healthy",
+                    "limit": rate.get("limit"),
+                    "remaining": rate.get("remaining"),
+                    "reset": rate.get("reset")
+                }
+                if rate.get("remaining", 100) < 10:
+                     health_data["checks"]["github_api"]["status"] = "warning"
+            else:
+                 health_data["checks"]["github_api"] = {"status": "error", "message": f"GitHub API Error: {r.status_code}"}
+        except Exception as e:
+            health_data["checks"]["github_api"] = {"status": "error", "message": str(e)}
+
     return health_data
 
 @router.get("/ready")

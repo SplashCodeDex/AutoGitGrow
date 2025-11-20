@@ -14,3 +14,6 @@ export const DETAILED_USERS_ENDPOINT = `${API_BASE_URL}/detailed-users`;
 export const DETAILED_REPOSITORIES_ENDPOINT = `${API_BASE_URL}/detailed-repositories`;
 export const AUTOMATION_RUN_ENDPOINT = `${API_BASE_URL}/automation/run`;
 export const AUTOMATION_RUNS_ENDPOINT = `${API_BASE_URL}/automation/runs`;
+export const USER_ME_ENDPOINT = `${API_BASE_URL}/user/me`;
+export const GEMINI_INSIGHT_ENDPOINT = `${API_BASE_URL}/gemini/insight`;
+export const HEALTH_DETAILED_ENDPOINT = `${API_BASE_URL}/health/detailed`;

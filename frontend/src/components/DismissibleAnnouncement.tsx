@@ -47,7 +47,12 @@ export const DismissibleAnnouncement: React.FC<DismissibleAnnouncementProps> = (
           transition={{ duration: 0.3 }}
           className={className} // Apply className to the motion.div
         >
-          <Announcement variant={variant} className="w-full">
+          <Announcement
+            variant={variant === 'destructive' ? 'error' : variant === 'secondary' ? 'info' : variant === 'outline' ? 'default' : variant || 'default'}
+            className="w-full"
+            message={message}
+            id={id}
+          >
             <AnnouncementTag>
               <Megaphone className="h-4 w-4" />
             </AnnouncementTag>

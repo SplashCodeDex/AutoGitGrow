@@ -13,10 +13,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 from backend.utils import logger
 
 
-TOKEN = os.getenv("PAT_TOKEN")
+TOKEN = os.getenv("GITHUB_PAT") or os.getenv("PAT_TOKEN")
 BOT_USER = os.getenv("BOT_USER")
 # Construct path relative to the script's parent directory
-STATE_PATH = Path(__file__).parent.parent / "public" / "stargazer_state.json"
+STATE_PATH = Path(__file__).parent.parent / "frontend" / "public" / "stargazer_state.json"
 
 import argparse
 import time
@@ -53,8 +53,9 @@ def main():
     def send_event(event_type, username):
         """Sends an event to the backend."""
         try:
+            api_url = os.getenv("API_URL", "http://localhost:8000")
             response = requests.post(
-                "http://localhost:8000/events/",
+                f"{api_url}/events/",
                 params={"username": username},
                 json={"event_type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()},
             )
@@ -83,7 +84,7 @@ def main():
 
     logger.info("Authenticating with GitHub ...")
     gh = Github(TOKEN)
-    
+
     @github_retry
     def get_github_user_with_retry(gh_obj, username):
         return gh_obj.get_user(username)

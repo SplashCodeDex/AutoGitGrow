@@ -29,3 +29,9 @@ class FollowerHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime)
     count = Column(Integer)
+
+class Whitelist(Base):
+    __tablename__ = "whitelist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)

@@ -20,6 +20,7 @@ WORKFLOW_MAP = {
     "autotrack": "run_autotrack.yml",
     "autounstarback": "run_autounstarback.yml",
     "stargazer_shoutouts": "stargazer_shoutouts.yml",
+    "gitgrow": "run.yml",
 }
 
 class AutomationRunRequest(BaseModel):
@@ -55,7 +56,7 @@ def dispatch_workflow(workflow_file: str, ref: str, inputs: dict | None = None):
         owner = os.getenv("GITHUB_REPO_OWNER", "owner")
         repo = os.getenv("GITHUB_REPO_NAME", "repo")
         return {"actions_url": f"https://github.com/{owner}/{repo}/actions"}
-    
+
     owner = _get_env("GITHUB_REPO_OWNER")
     repo = _get_env("GITHUB_REPO_NAME")
     token = _get_env("GITHUB_PAT")
@@ -106,7 +107,7 @@ def list_workflow_runs(workflow_file: str, per_page: int = 1):
             "created_at": datetime.now(timezone.utc).isoformat(),
             "html_url": f"https://github.com/mock/{workflow_file}/runs/1"
         }
-    
+
     owner = _get_env("GITHUB_REPO_OWNER")
     repo = _get_env("GITHUB_REPO_NAME")
     token = _get_env("GITHUB_PAT")
@@ -166,7 +167,7 @@ def run_automation(req: AutomationRunRequest, request: Request):
 
     # Audit log
     client_ip = request.client.host if request.client else 'unknown'
-    from utils import logger
+    from backend.utils import logger
     logger.info(f"[audit] automation_run action={action} ip={client_ip} ref={ref}")
 
     result = dispatch_workflow(workflow_file, ref, req.inputs)
