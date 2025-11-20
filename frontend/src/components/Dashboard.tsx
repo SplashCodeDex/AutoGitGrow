@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { UserPlus, UserMinus, Users, Star, AlertTriangle, GitFork, UserCheck, UserX, Search, Zap, Bot, Sparkles, Activity } from 'lucide-react';
+import { UserPlus, UserMinus, Users, Star, AlertTriangle, GitFork, UserCheck, UserX, Search, Zap, Bot, Sparkles, Activity, Radio } from 'lucide-react';
 import GeminiInsights from './GeminiInsights';
 import SystemHealth from './SystemHealth';
 import AutomationsPanel from './AutomationsPanel';
@@ -91,21 +91,39 @@ const Dashboard = ({ view = 'overview' }: { view?: string }) => {
     const [networkSubTab, setNetworkSubTab] = useState<'followed_back' | 'not_followed_back'>('followed_back');
     const [discoverySubTab, setDiscoverySubTab] = useState<'users' | 'repos'>('users');
 
-    const { data: stats, isLoading: isLoadingStats, isError: isErrorStats } = useQuery({ queryKey: ['stats'], queryFn: fetchStats });
-    const { data: activityFeed, isLoading: isLoadingActivityFeed, isError: isErrorActivityFeed } = useQuery({ queryKey: ['activityFeed'], queryFn: fetchActivityFeed });
-    const { data: followerGrowth, isLoading: isLoadingFollowerGrowth, isError: isErrorFollowerGrowth } = useQuery({ queryKey: ['followerGrowth'], queryFn: fetchFollowerGrowth });
-    const { data: reciprocity, isLoading: isLoadingReciprocity, isError: isErrorReciprocity } = useQuery({ queryKey: ['reciprocity'], queryFn: fetchReciprocity });
+    const { data: stats, isLoading: isLoadingStats, isError: isErrorStats } = useQuery({
+        queryKey: ['stats'],
+        queryFn: fetchStats,
+        refetchInterval: 30000
+    });
+    const { data: activityFeed, isLoading: isLoadingActivityFeed, isError: isErrorActivityFeed } = useQuery({
+        queryKey: ['activityFeed'],
+        queryFn: fetchActivityFeed,
+        refetchInterval: 30000
+    });
+    const { data: followerGrowth, isLoading: isLoadingFollowerGrowth, isError: isErrorFollowerGrowth } = useQuery({
+        queryKey: ['followerGrowth'],
+        queryFn: fetchFollowerGrowth,
+        refetchInterval: 60000
+    });
+    const { data: reciprocity, isLoading: isLoadingReciprocity, isError: isErrorReciprocity } = useQuery({
+        queryKey: ['reciprocity'],
+        queryFn: fetchReciprocity,
+        refetchInterval: 60000
+    });
 
     const { data: detailedUsers, isLoading: isLoadingDetailedUsers, isError: isErrorDetailedUsers } = useQuery({
         queryKey: ['detailedUsers', stats?.suggested_users],
         queryFn: () => fetchDetailedUsers(stats.suggested_users),
         enabled: !!stats?.suggested_users,
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     });
 
     const { data: detailedRepos, isLoading: isLoadingDetailedRepos, isError: isErrorDetailedRepos } = useQuery({
         queryKey: ['detailedRepos', stats?.top_repositories],
         queryFn: () => fetchDetailedRepos(stats.top_repositories.map(repo => repo.name)),
         enabled: !!stats?.top_repositories,
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     });
 
     const isLoading = isLoadingStats || isLoadingActivityFeed || isLoadingFollowerGrowth || isLoadingReciprocity || isLoadingDetailedUsers || isLoadingDetailedRepos;
@@ -169,7 +187,13 @@ const Dashboard = ({ view = 'overview' }: { view?: string }) => {
 
             {/* Header is always visible */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <PageHeader title="AutoGitGrow" subtitle="Your personal GitHub networking assistant." />
+                <div className="flex items-center gap-3">
+                    <PageHeader title="AutoGitGrow" subtitle="Your personal GitHub networking assistant." />
+                    <div className="hidden md:flex items-center gap-1.5 px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-200 dark:border-green-800/50">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
+                    </div>
+                </div>
                 <SystemHealth />
             </div>
 
