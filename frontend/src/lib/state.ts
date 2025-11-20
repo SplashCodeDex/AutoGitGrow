@@ -1,4 +1,5 @@
 import { atom, useAtom } from 'jotai';
+// Force HMR update
 
 const getInitialTheme = () => {
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -12,6 +13,8 @@ const getInitialTheme = () => {
 };
 
 const themeAtom = atom(getInitialTheme());
+export const userLevelAtom = atom(1);
+export const userXPAtom = atom(0);
 
 export const useTheme = () => {
   const [theme, setTheme] = useAtom(themeAtom);

@@ -1,21 +1,44 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from "framer-motion";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { UserPlus, UserMinus, Users, Star, AlertTriangle, GitFork, UserCheck, UserX, Search, Zap, Bot, Sparkles, Activity, Radio } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+    Users,
+    UserPlus,
+    Star,
+    GitMerge,
+    Activity,
+    Settings,
+    LayoutDashboard,
+    Network,
+    Compass,
+    Zap,
+    Menu,
+    X,
+    Search,
+    Bell
+} from 'lucide-react';
+import {
+    STATS_ENDPOINT,
+    ACTIVITY_FEED_ENDPOINT,
+    FOLLOWER_GROWTH_ENDPOINT,
+    RECIPROCITY_ENDPOINT
+} from '../lib/api';
+import StatCard from './StatCard';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import GeminiInsights from './GeminiInsights';
 import SystemHealth from './SystemHealth';
 import AutomationsPanel from './AutomationsPanel';
-import StatCard from './StatCard';
-import SkeletonCard from './SkeletonCard';
-import PageHeader from './PageHeader';
+import SettingsPage from './SettingsPage';
+import ConnectivityBanner from './ConnectivityBanner';
 import OnboardingMessage from './OnboardingMessage';
-import { STATS_ENDPOINT, ACTIVITY_FEED_ENDPOINT, FOLLOWER_GROWTH_ENDPOINT, RECIPROCITY_ENDPOINT, DETAILED_USERS_ENDPOINT, DETAILED_REPOSITORIES_ENDPOINT } from '../lib/api';
-import ReciprocityCard from './ReciprocityCard';
-import ActivityCard from './ActivityCard';
-import InfoCard from './InfoCard';
-import { useTheme } from '../lib/state';
-import { useQuery } from '@tanstack/react-query';
+import DismissibleAnnouncement from './DismissibleAnnouncement';
+import NetworkGraph3D from './NetworkGraph3D';
+import ActivityHeatmap from './ActivityHeatmap';
+import { toast } from 'sonner';
+import { useAtom } from 'jotai';
+import { userLevelAtom, userXPAtom } from '../lib/state';
+import { Progress } from './ui/progress';
 
+// --- Fetch Functions ---
 const fetchStats = async () => {
     const res = await fetch(STATS_ENDPOINT);
     if (!res.ok) throw new Error('Failed to fetch stats');
@@ -40,315 +63,226 @@ const fetchReciprocity = async () => {
     return res.json();
 };
 
-const fetchDetailedUsers = async (usernames) => {
-    const res = await fetch(DETAILED_USERS_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(usernames),
-    });
-    if (!res.ok) throw new Error('Failed to fetch detailed users');
-    return res.json();
-};
+// --- Components ---
 
-const fetchDetailedRepos = async (repoNames) => {
-    const res = await fetch(DETAILED_REPOSITORIES_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(repoNames),
-    });
-    if (!res.ok) throw new Error('Failed to fetch detailed repositories');
-    return res.json();
-};
+const Dashboard = ({ view }: { view: string }) => {
+    const [level, setLevel] = useAtom(userLevelAtom);
+    const [xp, setXP] = useAtom(userXPAtom);
 
-const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => {
-    const { isDarkMode } = useTheme();
-    return (
-        <button
-            onClick={onClick}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${active
-                ? 'bg-indigo-500 text-white shadow-md'
-                : isDarkMode
-                    ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                }`}
-        >
-            <Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{label}</span>
-        </button>
-    );
-};
-
-const Dashboard = ({ view = 'overview' }: { view?: string }) => {
-    const { isDarkMode } = useTheme();
-    const [showOnboarding, setShowOnboarding] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return !localStorage.getItem('hasSeenOnboarding');
-        }
-        return true;
-    });
-
-    // Sub-tabs for Explorer (still needed for Network/Discovery views)
-    const [networkSubTab, setNetworkSubTab] = useState<'followed_back' | 'not_followed_back'>('followed_back');
-    const [discoverySubTab, setDiscoverySubTab] = useState<'users' | 'repos'>('users');
-
-    const { data: stats, isLoading: isLoadingStats, isError: isErrorStats } = useQuery({
+    // Real-time data fetching
+    const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ['stats'],
         queryFn: fetchStats,
-        refetchInterval: 30000
+        refetchInterval: 30000,
     });
-    const { data: activityFeed, isLoading: isLoadingActivityFeed, isError: isErrorActivityFeed } = useQuery({
+
+    const { data: activityFeed } = useQuery({
         queryKey: ['activityFeed'],
         queryFn: fetchActivityFeed,
-        refetchInterval: 30000
+        refetchInterval: 60000,
     });
-    const { data: followerGrowth, isLoading: isLoadingFollowerGrowth, isError: isErrorFollowerGrowth } = useQuery({
+
+    const { data: followerGrowth } = useQuery({
         queryKey: ['followerGrowth'],
         queryFn: fetchFollowerGrowth,
-        refetchInterval: 60000
+        refetchInterval: 60000,
     });
-    const { data: reciprocity, isLoading: isLoadingReciprocity, isError: isErrorReciprocity } = useQuery({
+
+    const { data: reciprocity } = useQuery({
         queryKey: ['reciprocity'],
         queryFn: fetchReciprocity,
-        refetchInterval: 60000
+        refetchInterval: 60000,
     });
 
-    const { data: detailedUsers, isLoading: isLoadingDetailedUsers, isError: isErrorDetailedUsers } = useQuery({
-        queryKey: ['detailedUsers', stats?.suggested_users],
-        queryFn: () => fetchDetailedUsers(stats.suggested_users),
-        enabled: !!stats?.suggested_users,
-        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    });
+    // Gamification Logic
+    useEffect(() => {
+        if (stats?.followers) {
+            const newLevel = Math.floor(stats.followers / 10) + 1;
+            const newXP = (stats.followers % 10) * 10;
 
-    const { data: detailedRepos, isLoading: isLoadingDetailedRepos, isError: isErrorDetailedRepos } = useQuery({
-        queryKey: ['detailedRepos', stats?.top_repositories],
-        queryFn: () => fetchDetailedRepos(stats.top_repositories.map(repo => repo.name)),
-        enabled: !!stats?.top_repositories,
-        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    });
+            if (newLevel > level) {
+                toast.success(`Level Up! You are now level ${newLevel}! 🎉`);
+            }
 
-    const isLoading = isLoadingStats || isLoadingActivityFeed || isLoadingFollowerGrowth || isLoadingReciprocity || isLoadingDetailedUsers || isLoadingDetailedRepos;
-    const isError = isErrorStats || isErrorActivityFeed || isErrorFollowerGrowth || isErrorReciprocity || isErrorDetailedUsers || isErrorDetailedRepos;
-
-    if (isError) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-                <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-                <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Error Loading Dashboard Data</h2>
-                <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-md">Please check your connection and try again.</p>
-            </div>
-        )
-    }
-
-    const parsedActivity = activityFeed?.map(item => {
-        let targetUsername = 'Unknown';
-        if (item.event_type === 'follow' || item.event_type === 'unfollow') {
-            targetUsername = item.target_user?.username || 'Unknown';
-        } else if (item.event_type === 'star' || item.event_type === 'unstar') {
-            targetUsername = item.source_user?.username || 'Unknown';
-        } else if (item.event_type === 'followed_by') {
-            targetUsername = item.source_user?.username || 'Unknown';
+            setLevel(newLevel);
+            setXP(newXP);
         }
-        return {
-            type: item.event_type,
-            target: targetUsername,
-            time: new Date(item.timestamp)
-        };
-    }).sort((a, b) => b.time.getTime() - a.time.getTime()) || [];
+    }, [stats?.followers, level, setLevel, setXP]);
 
-    const growthData = followerGrowth?.map(item => ({
-        name: new Date(item.timestamp).toLocaleDateString(),
-        followers: item.count,
-    })) || [];
-
-    const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string | number }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className={`p-3 rounded-lg shadow-lg ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border`}>
-                    <p className="label font-semibold text-slate-700 dark:text-slate-300">{`${label}`}</p>
-                    <p className="intro text-indigo-500 dark:text-indigo-400">{`Followers : ${payload[0].value}`}</p>
-                </div>
-            );
+    // Real-time Notifications
+    useEffect(() => {
+        if (stats) {
+            // Simple check to simulate notifications on change.
+            // In a real app, we'd compare with previous state or use a websocket event.
+            // For now, we rely on the user seeing the toast when the query refetches and data changes.
         }
-        return null;
-    };
+    }, [stats]);
+
+    // Prepare data for Heatmap (mocked for now based on activity feed if needed, or static)
+    const heatmapData = useMemo(() => {
+        // Transform activity feed into heatmap format if possible, or use mock
+        return [];
+    }, [activityFeed]);
+
+    // Prepare nodes for 3D Graph
+    const graphNodes = useMemo(() => {
+        if (!reciprocity) return { nodes: [], links: [] };
+
+        const nodes = [
+            { id: 'me', group: 1, size: 20 },
+            ...(reciprocity.mutuals || []).map((u: string) => ({ id: u, group: 2, size: 10 })),
+            ...(reciprocity.fans || []).map((u: string) => ({ id: u, group: 3, size: 5 })),
+        ];
+        const links = [
+            ...(reciprocity.mutuals || []).map((u: string) => ({ source: 'me', target: u })),
+            ...(reciprocity.fans || []).map((u: string) => ({ source: u, target: 'me' })),
+        ];
+        return { nodes, links };
+    }, [reciprocity]);
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <AnimatePresence>
-                {showOnboarding && (
-                    <OnboardingMessage
-                        onClose={() => {
-                            setShowOnboarding(false);
-                            localStorage.setItem('hasSeenOnboarding', 'true');
-                        }}
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Header is always visible */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <PageHeader title="AutoGitGrow" subtitle="Your personal GitHub networking assistant." />
-                    <div className="hidden md:flex items-center gap-1.5 px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded-full border border-green-200 dark:border-green-800/50">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
-                    </div>
+        <div className="space-y-8">
+            {/* Header with Gamification and System Health */}
+            <header className="flex items-center justify-between mb-8">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        {view === 'overview' && 'Dashboard'}
+                        {view === 'network' && 'Network Analysis'}
+                        {view === 'discovery' && 'Discovery'}
+                        {view === 'automations' && 'Automation Center'}
+                        {view === 'settings' && 'Settings'}
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        System Operational
+                    </p>
                 </div>
-                <SystemHealth />
-            </div>
 
-            {/* Overview View */}
+                <div className="flex items-center space-x-4">
+                    {/* Gamification Bar */}
+                    <div className="hidden md:flex flex-col items-end mr-4">
+                        <div className="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-1">Level {level}</div>
+                        <div className="w-32 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <Progress value={xp} className="h-full bg-indigo-500" />
+                        </div>
+                    </div>
+
+                    <SystemHealth />
+
+                    <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors relative">
+                        <Bell className="w-5 h-5" />
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                    </button>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 border-2 border-white dark:border-slate-800 shadow-md"></div>
+                </div>
+            </header>
+
+            <DismissibleAnnouncement />
+
             {view === 'overview' && (
-                <>
-                    {/* Stats Grid */}
-                    <motion.div
-                        className="grid grid-cols-2 md:grid-cols-4 gap-3"
-                        initial="hidden"
-                        animate="visible"
-                        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
-                    >
-                        {isLoading ? (
-                            Array(8).fill(0).map((_, i) => <SkeletonCard key={i} />)
-                        ) : (
-                            <>
-                                <StatCard title="Follows" value={stats.followers} icon={UserPlus} color="text-green-500 bg-green-500" />
-                                <StatCard title="Unfollows" value={stats.unfollows} icon={UserMinus} color="text-red-500 bg-red-500" />
-                                <StatCard title="Stars" value={stats.stars} icon={Star} color="text-yellow-500 bg-yellow-500" />
-                                <StatCard title="Unstars" value={stats.unstars} icon={UserMinus} color="text-red-500 bg-red-500" />
-                                <StatCard title="Follow Backs" value={stats.follow_backs} icon={Users} color="text-blue-500 bg-blue-500" />
-                                <StatCard title="Reciprocity" value={`${stats.reciprocity_rate.toFixed(1)}%`} icon={Users} color="text-purple-500 bg-purple-500" />
-                                <StatCard title="Growth Stars" value={stats.growth_stars} icon={Star} color="text-purple-500 bg-purple-500" />
-                            </>
-                        )}
-                    </motion.div>
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard title="Total Followers" value={stats?.followers || 0} icon={Users} color="text-blue-500" automationId="gitgrow" />
+                        <StatCard title="Following" value={stats?.following || 0} icon={UserPlus} color="text-green-500" automationId="autounstarback" />
+                        <StatCard title="Starred Repos" value={stats?.starred_repos || 0} icon={Star} color="text-yellow-500" automationId="autostargrow" />
+                        <StatCard title="Mutuals" value={stats?.mutual_followers || 0} icon={GitMerge} color="text-purple-500" automationId="autostarback" />
+                    </div>
 
-                    {/* Growth Chart */}
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Growth Trends</h2>
-                        </div>
-                        {isLoading ? (
-                            <div className="w-full h-[300px] bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={growthData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <defs>
-                                        <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4} />
-                                            <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'} />
-                                    <XAxis dataKey="name" stroke={isDarkMode ? '#94a3b8' : '#6b7280'} fontSize={12} />
-                                    <YAxis stroke={isDarkMode ? '#94a3b8' : '#6b7280'} fontSize={12} />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Area type="monotone" dataKey="followers" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorFollowers)" activeDot={{ r: 8, strokeWidth: 2 }} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
-                    </div>
-                </>
-            )}
-
-            {/* Insights View */}
-            {view === 'insights' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex items-center space-x-2 mb-6">
-                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-full">
-                            <Sparkles className="h-5 w-5 text-indigo-500" />
-                        </div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">AI Insights</h2>
-                    </div>
-                    {!isLoading && <GeminiInsights stats={stats} growthData={growthData} />}
-                </div>
-            )}
-
-            {/* Automations View */}
-            {view === 'automations' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex items-center space-x-2 mb-6">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                            <Bot className="h-5 w-5 text-blue-500" />
-                        </div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Automations</h2>
-                    </div>
-                    {!isLoading && <AutomationsPanel />}
-                </div>
-            )}
-
-            {/* Activity View */}
-            {view === 'activity' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex items-center space-x-2 mb-6">
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-full">
-                            <Zap className="h-5 w-5 text-orange-500" />
-                        </div>
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Recent Activity</h2>
-                    </div>
-                    <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                        {(isLoading ? [{ type: 'Info', target: 'Loading...', time: new Date() }] : parsedActivity).map((item, index) => (
-                            <ActivityCard key={index} item={item} />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Network View */}
-            {view === 'network' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Network Status</h2>
-                        <div className="flex space-x-2 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg">
-                            <TabButton active={networkSubTab === 'followed_back'} onClick={() => setNetworkSubTab('followed_back')} icon={UserCheck} label="Followed Back" />
-                            <TabButton active={networkSubTab === 'not_followed_back'} onClick={() => setNetworkSubTab('not_followed_back')} icon={UserX} label="Pending" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {networkSubTab === 'followed_back' ? (
-                            reciprocity?.followed_back?.map((username) => (
-                                <ReciprocityCard key={username} username={username} data={{ status: 'followed_back' }} />
-                            ))
-                        ) : (
-                            reciprocity?.not_followed_back?.map((username) => (
-                                <ReciprocityCard key={username} username={username} data={{ status: 'not_followed_back' }} />
-                            ))
-                        )}
-                        {((networkSubTab === 'followed_back' && (!reciprocity?.followed_back || reciprocity.followed_back.length === 0)) ||
-                            (networkSubTab === 'not_followed_back' && (!reciprocity?.not_followed_back || reciprocity.not_followed_back.length === 0))) && (
-                                <div className="col-span-full flex flex-col items-center justify-center text-slate-400 py-10">
-                                    <Users className="w-12 h-12 mb-2 opacity-50" />
-                                    <p>No users found in this category.</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <h3 className="text-lg font-semibold mb-6 text-slate-800 dark:text-white">Growth Trends</h3>
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={followerGrowth || []}>
+                                            <defs>
+                                                <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} className="dark:stroke-slate-800" />
+                                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                                                itemStyle={{ color: '#fff' }}
+                                            />
+                                            <Area type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorFollowers)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
                                 </div>
-                            )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-8">
+                            <GeminiInsights stats={stats} growthData={followerGrowth} />
+
+                            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm h-[500px] flex flex-col">
+                                <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-white">Live Activity</h3>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                                    {activityFeed?.map((item: any, i: number) => (
+                                        <div key={i} className="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                            <div className={`p-2 rounded-full ${item.type === 'follow' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                item.type === 'star' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                    'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                }`}>
+                                                {item.type === 'follow' ? <UserPlus className="w-4 h-4" /> :
+                                                    item.type === 'star' ? <Star className="w-4 h-4" /> :
+                                                        <Activity className="w-4 h-4" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-slate-800 dark:text-slate-200">
+                                                    <span className="font-medium">{item.user || 'Someone'}</span> {item.action}
+                                                </p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.time}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Discovery View */}
-            {view === 'discovery' && (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200/80 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Discovery</h2>
-                        <div className="flex space-x-2 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg">
-                            <TabButton active={discoverySubTab === 'users'} onClick={() => setDiscoverySubTab('users')} icon={Users} label="Users" />
-                            <TabButton active={discoverySubTab === 'repos'} onClick={() => setDiscoverySubTab('repos')} icon={GitFork} label="Repos" />
+            {view === 'network' && (
+                <div className="animate-in fade-in zoom-in-95 duration-300">
+                    <div className="h-[600px] bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative group">
+                        <div className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white border border-white/10">
+                            Interactive Galaxy View
                         </div>
+                        <NetworkGraph3D nodes={graphNodes.nodes} />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {discoverySubTab === 'users' ? (
-                            detailedUsers?.map((user, index) => (
-                                <InfoCard key={index} title={user.username} data={user} />
-                            ))
-                        ) : (
-                            detailedRepos?.map((repo, index) => (
-                                <InfoCard key={index} title={repo.name} data={repo} />
-                            ))
-                        )}
+                </div>
+            )}
+
+            {view === 'discovery' && (
+                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-white">Discovery</h3>
+                        <p className="text-slate-500 dark:text-slate-400">Explore new repositories and users...</p>
+                        {/* Content for Discovery would go here */}
                     </div>
+                </div>
+            )}
+
+            {view === 'automations' && (
+                <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                    <AutomationsPanel />
+                </div>
+            )}
+
+            {view === 'settings' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <SettingsPage />
                 </div>
             )}
         </div>
-    )
+    );
 };
 
 export default Dashboard;

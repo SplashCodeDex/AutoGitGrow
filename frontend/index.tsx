@@ -49,9 +49,9 @@ const App = () => {
       case 'settings':
         return <SettingsPage />;
       case 'changelog':
-        return <MarkdownViewer filePath="/CHANGELOG.md" />;
+        return <MarkdownViewer file="/CHANGELOG.md" title="Changelog" />;
       case 'license':
-        return <TextViewer filePath="/LICENSE" />;
+        return <TextViewer file="/LICENSE" title="License" />;
       default:
         return <Dashboard view="overview" />;
     }
