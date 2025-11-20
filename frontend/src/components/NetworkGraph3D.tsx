@@ -78,7 +78,7 @@ const NetworkGraph3D: React.FC<NetworkGraph3DProps> = ({ nodes }) => {
     const meNode = layout.find(n => n.group === 'me');
 
     return (
-        <div className="w-full h-[400px] rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shadow-2xl relative">
+        <div className="w-full h-full rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shadow-2xl relative">
             <div className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-sm p-2 rounded text-xs text-white">
                 <p className="font-bold mb-1">Network Galaxy</p>
                 <div className="flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> You</div>

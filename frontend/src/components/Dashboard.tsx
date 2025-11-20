@@ -14,7 +14,8 @@ import {
     Menu,
     X,
     Search,
-    Bell
+    Bell,
+    Play
 } from 'lucide-react';
 import {
     STATS_ENDPOINT,
@@ -33,6 +34,7 @@ import OnboardingMessage from './OnboardingMessage';
 import DismissibleAnnouncement from './DismissibleAnnouncement';
 import NetworkGraph3D from './NetworkGraph3D';
 import ActivityHeatmap from './ActivityHeatmap';
+import AutomationLauncher from './AutomationLauncher';
 import { toast } from 'sonner';
 import { useAtom } from 'jotai';
 import { userLevelAtom, userXPAtom } from '../lib/state';
@@ -68,6 +70,7 @@ const fetchReciprocity = async () => {
 const Dashboard = ({ view }: { view: string }) => {
     const [level, setLevel] = useAtom(userLevelAtom);
     const [xp, setXP] = useAtom(userXPAtom);
+    const [launcherOpen, setLauncherOpen] = useState(false);
 
     // Real-time data fetching
     const { data: stats, isLoading: statsLoading } = useQuery({
@@ -142,6 +145,7 @@ const Dashboard = ({ view }: { view: string }) => {
 
     return (
         <div className="space-y-8">
+            <AutomationLauncher isOpen={launcherOpen} onClose={() => setLauncherOpen(false)} />
             {/* Header with Gamification and System Health */}
             <header className="flex items-center justify-between mb-8">
                 <div>
@@ -169,6 +173,14 @@ const Dashboard = ({ view }: { view: string }) => {
                             <Progress value={xp} className="h-full bg-indigo-500" />
                         </div>
                     </div>
+
+                    <button
+                        onClick={() => setLauncherOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md font-medium text-sm mr-4"
+                    >
+                        <Play className="w-4 h-4" />
+                        Start Automation
+                    </button>
 
                     <SystemHealth />
 

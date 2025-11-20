@@ -189,7 +189,8 @@ def read_user(username: str, db: Session = Depends(get_db)):
 @app.get("/api/stats")
 def read_stats(db: Session = Depends(get_db)):
     logger.info("Received request to read stats.")
-    return crud.get_stats(db)
+    from backend.crud_real_data import get_real_stats
+    return get_real_stats(db)
 
 @app.get("/api/activity-feed", response_model=List[schemas.Event])
 def read_events(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -208,10 +209,11 @@ def read_follower_history(skip: int = 0, limit: int = 100, db: Session = Depends
     follower_history = crud.get_follower_history(db, skip=skip, limit=limit)
     return follower_history
 
-@app.get("/api/reciprocity", response_model=schemas.ReciprocityData)
+@app.get("/api/reciprocity")
 def read_reciprocity(db: Session = Depends(get_db)):
     logger.info("Received request to read reciprocity data.")
-    return crud.get_reciprocity_data(db)
+    from backend.crud_real_data import get_real_reciprocity
+    return get_real_reciprocity(db)
 
 @app.post("/api/detailed-users")
 def read_detailed_users(usernames: List[str], db: Session = Depends(get_db)):
