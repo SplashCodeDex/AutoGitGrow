@@ -156,13 +156,18 @@ def main():
                 whitelist = {ln.strip().lower() for ln in f if ln.strip()}
             logger.info(f"Loaded {len(whitelist)} users from whitelist.txt (fallback)")
 
-    if follow_dates_path.exists():
-        with follow_dates_path.open() as f:
-            follow_dates = json.load(f)
-        logger.info(f"Loaded {len(follow_dates)} follow dates from follow_dates.json")
-    else:
-        follow_dates = {}
-        logger.info("No follow_dates.json found, starting with empty follow dates.")
+    # — Load follow dates from API —
+    follow_dates = {}
+    try:
+        resp = requests.get(f"{api_url}/api/follows/active")
+        if resp.status_code == 200:
+            follow_dates = resp.json()
+            logger.info(f"Loaded {len(follow_dates)} active follows from API")
+        else:
+            logger.warning(f"Failed to fetch active follows from API: {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Failed to fetch active follows from API: {e}")
+
 
     # — Load a random sample of candidate usernames —
     if not user_path.exists():
@@ -341,9 +346,10 @@ def main():
         logger.info(f"Private/inaccessible skipped during follow-back: {len(private_back)}")
 
     # — Save follow dates —
-    with follow_dates_path.open("w") as f:
-        json.dump(follow_dates, f, indent=2)
-    logger.info(f"Saved {len(follow_dates)} follow dates to follow_dates.json")
+    # No longer saving to local file, as we rely on the DB events.
+    # The 'follow' event sent via send_event() persists the action.
+    logger.info("Follow actions persisted to DB via API.")
+
 
     record_follower_count(me.followers)
 

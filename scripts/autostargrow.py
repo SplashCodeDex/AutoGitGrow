@@ -64,14 +64,19 @@ def main():
     me = get_github_user_with_retry(gh)
     logger.info(f"Authenticated as: {me.login}")
 
-    if not STATE_PATH.exists():
-        logger.info(f"State file {STATE_PATH} not found. Creating a new one.")
-        state = {}
-    else:
-        logger.info(f"Loading state from {STATE_PATH} ...")
-        with open(STATE_PATH) as f:
-            state = json.load(f)
-    growth_starred = state.get("growth_starred", {})
+    # Load growth_starred from API
+    growth_starred = []
+    api_url = os.getenv("API_URL", "http://localhost:8000")
+    try:
+        resp = requests.get(f"{api_url}/api/stars/growth")
+        if resp.status_code == 200:
+            growth_starred = resp.json()
+            logger.info(f"Loaded {len(growth_starred)} growth starred users from API")
+        else:
+            logger.warning(f"Failed to fetch growth starred users from API: {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Failed to fetch growth starred users from API: {e}")
+
 
     # Load candidate usernames for growth
     with open(USERNAMES_PATH) as f:
@@ -101,24 +106,18 @@ def main():
                 me_obj.add_to_starred(repo_obj)
             add_to_starred_with_retry(me, repo)
             time.sleep(random.uniform(1, 3))  # Add a random delay
-        growth_starred.setdefault(user, [])
-        growth_starred[user].append({
-            "repo": repo.full_name,
             "starred_at": now_iso
         })
         if not args.dry_run:
             send_event("growth_star", user)
+
         logger.info(f"    Growth: Starred {repo.full_name} for {user} at {now_iso}")
 
     # Save updated growth_starred to state file
-    if not args.dry_run:
-        logger.info(f"Saving updated growth_starred to {STATE_PATH} ...")
-        state["growth_starred"] = growth_starred
-        with open(STATE_PATH, "w") as f:
-            json.dump(state, f, indent=2)
-        logger.info(f"Updated growth_starred written to {STATE_PATH}")
-    else:
-        logger.info("Dry run, not saving state.")
+    # No longer saving to local file, as we rely on the DB events.
+    # The 'growth_star' event sent via send_event() persists the action.
+    logger.info("Growth star actions persisted to DB via API.")
+
 
     logger.info("=== GitGrowBot autostargrow.py finished ===")
 

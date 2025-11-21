@@ -19,7 +19,10 @@ const SettingsPage = () => {
             setIsLoading(true);
             setError('');
             try {
-                const response = await fetch(`${API_BASE_URL}/settings/whitelist`);
+                const token = localStorage.getItem('token');
+                const headers: HeadersInit = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const response = await fetch(`${API_BASE_URL}/settings/whitelist`, { headers });
                 if (!response.ok) {
                     throw new Error(`Failed to fetch whitelist: ${response.statusText}`);
                 }
@@ -43,11 +46,13 @@ const SettingsPage = () => {
         setIsSaving(true);
         setError('');
         try {
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const response = await fetch(`${API_BASE_URL}/settings/whitelist`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({ content: whitelistContent }),
             });
 
@@ -56,7 +61,7 @@ const SettingsPage = () => {
             }
             alert('Whitelist saved successfully!');
             // Re-fetch to ensure sync
-            const fetchResponse = await fetch(`${API_BASE_URL}/settings/whitelist`);
+            const fetchResponse = await fetch(`${API_BASE_URL}/settings/whitelist`, { headers });
             if (fetchResponse.ok) {
                 const data = await fetchResponse.json();
                 const content = data.map((item: any) => item.username).join('\n');

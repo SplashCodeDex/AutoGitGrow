@@ -12,3 +12,6 @@ psutil
 psycopg2-binary
 requests
 google-generativeai
+apscheduler
+python-jose[cryptography]
+passlib[bcrypt]

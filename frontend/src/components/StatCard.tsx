@@ -69,14 +69,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, au
         className="h-full"
       >
         <CardContainer className="inter-var h-full">
-          <CardBody className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border border-slate-200/80 dark:border-slate-700 w-full h-full min-h-[120px] relative overflow-hidden">
+          <CardBody className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/20 hover:-translate-y-1 group border border-slate-200/80 dark:border-slate-700 w-full h-full min-h-[120px] relative overflow-hidden">
 
             {/* Automation Trigger Button (Only if automationId is present) */}
             {automationId && (
               <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsPopoverOpen(true); }}
-                  className="p-1.5 bg-indigo-500 text-white rounded-full shadow-md hover:bg-indigo-600 transition-colors"
+                  className={`p-1.5 bg-indigo-500 text-white rounded-full shadow-md hover:bg-indigo-600 transition-colors ${status === 'running' ? 'animate-pulse ring-2 ring-indigo-400' : ''}`}
                   title="Run Automation"
                 >
                   <Settings2 className="w-3 h-3" />

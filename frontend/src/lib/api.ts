@@ -1,9 +1,33 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const AUTOMATION_API_KEY = import.meta.env.VITE_AUTOMATION_API_KEY;
-export const automationHeaders = () => {
+
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   if (AUTOMATION_API_KEY) headers['X-Automation-Key'] = AUTOMATION_API_KEY;
   return headers;
+};
+
+export const automationHeaders = getAuthHeaders; // Alias for backward compatibility if needed
+
+export const login = async (username: string, password: string) => {
+  const formData = new FormData();
+  formData.append('username', username);
+  formData.append('password', password);
+
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Login failed');
+  }
+
+  return response.json();
 };
 
 export const STATS_ENDPOINT = `${API_BASE_URL}/stats`;

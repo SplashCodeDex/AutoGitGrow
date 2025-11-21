@@ -24,11 +24,11 @@ const GeminiInsights = ({ stats, growthData }) => {
         },
         body: JSON.stringify({
           stats: {
-            followersGained: stats.followersGained,
-            followBacks: stats.followBacks,
-            unfollowed: stats.unfollowed,
-            stargazers: stats.stargazers,
-            reciprocityRate: stats.reciprocityRate
+            followersGained: stats.followers || 0,
+            followBacks: stats.mutual_followers || 0,
+            unfollowed: stats.automation_unfollows || 0,
+            stargazers: stats.starred_repos || 0,
+            reciprocityRate: stats.reciprocity_rate || 0
           },
           growthData: growthData
         }),

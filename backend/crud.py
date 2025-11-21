@@ -80,138 +80,7 @@ def create_event(db: Session, event: schemas.EventCreate, source_user_id: Option
     logger.info(f"Event created with ID: {db_event.id}")
     return db_event
 
-def get_top_repositories(db: Session, limit: int = 5):
-    logger.info(f"Fetching top {limit} repositories.")
-    top_repos = (
-        db.query(
-            models.Event.repository_name,
-            func.count(models.Event.repository_name).label("stargazers_count")
-        ).filter(
-            models.Event.event_type == "star",
-            models.Event.repository_name.isnot(None)
-        ).group_by(models.Event.repository_name)
-        .order_by(func.count(models.Event.repository_name).desc())
-        .limit(limit)
-        .all()
-    )
-    logger.info(f"Found {len(top_repos)} top repositories.")
-    return [{"name": repo.repository_name, "stargazers_count": repo.stargazers_count} for repo in top_repos]
 
-def get_suggested_users(db: Session, limit: int = 5):
-    logger.info(f"Fetching {limit} suggested users.")
-    bot_user_id = get_bot_user_id(db)
-    if not bot_user_id:
-        logger.warning("Bot user ID not available, cannot fetch suggested users.")
-        return []
-
-    # Find users who starred the bot's repositories
-    starred_by_users_ids = db.query(models.Event.source_user_id).filter(
-        models.Event.event_type == "star",
-        models.Event.target_user_id == bot_user_id,
-        models.Event.source_user_id.isnot(None)
-    ).distinct().all()
-
-    suggested_users = []
-    for user_id_tuple in starred_by_users_ids:
-        starred_user_id = user_id_tuple[0]
-
-        # Check if the bot has already followed this user
-        bot_followed_user = db.query(models.Event).filter(
-            models.Event.event_type == "follow",
-            models.Event.source_user_id == bot_user_id,
-            models.Event.target_user_id == starred_user_id
-        ).first()
-
-        if not bot_followed_user:
-            # Get the username of the suggested user
-            user = db.query(models.User).filter(models.User.id == starred_user_id).first()
-            if user:
-                suggested_users.append(user.username)
-
-        if len(suggested_users) >= limit:
-            break
-    logger.info(f"Found {len(suggested_users)} suggested users.")
-    return suggested_users
-
-def get_follow_backs(db: Session):
-    logger.info("Calculating follow backs.")
-    bot_user_id = get_bot_user_id(db)
-    if not bot_user_id:
-        logger.warning("Bot user ID not available, cannot calculate follow backs.")
-        return 0
-
-    # Get users the bot followed
-    bot_followed_users_ids = db.query(models.Event.target_user_id).filter(
-        models.Event.event_type == "follow",
-        models.Event.source_user_id == bot_user_id
-    ).distinct().all()
-
-    follow_backs_count = 0
-    for user_id_tuple in bot_followed_users_ids:
-        followed_user_id = user_id_tuple[0]
-
-        # Check if this user followed the bot back
-        user_followed_bot_back = db.query(models.Event).filter(
-            models.Event.event_type == "follow",
-            models.Event.source_user_id == followed_user_id,
-            models.Event.target_user_id == bot_user_id
-        ).first()
-
-        if user_followed_bot_back:
-            follow_backs_count += 1
-    logger.info(f"Calculated {follow_backs_count} follow backs.")
-    return follow_backs_count
-
-def get_reciprocity_data(db: Session):
-    logger.info("Fetching reciprocity data.")
-    bot_user_id = get_bot_user_id(db)
-    if not bot_user_id:
-        logger.warning("Bot user ID not available, returning empty reciprocity data.")
-        return schemas.ReciprocityData(followed_back=[], not_followed_back=[])
-
-    bot_followed_users = db.query(models.User).join(models.Event, models.User.id == models.Event.target_user_id).filter(
-        models.Event.event_type == "follow",
-        models.Event.source_user_id == bot_user_id
-    ).distinct().all()
-
-    followed_back = []
-    not_followed_back = []
-
-    for user in bot_followed_users:
-        user_followed_bot_back = db.query(models.Event).filter(
-            models.Event.event_type == "follow",
-            models.Event.source_user_id == user.id,
-            models.Event.target_user_id == bot_user_id
-        ).first()
-
-        if user_followed_bot_back:
-            followed_back.append(user.username)
-        else:
-            not_followed_back.append(user.username)
-    logger.info(f"Reciprocity data: Followed back: {len(followed_back)}, Not followed back: {len(not_followed_back)}.")
-    return schemas.ReciprocityData(followed_back=followed_back, not_followed_back=not_followed_back)
-
-def get_stats(db: Session):
-    logger.info("Fetching application statistics.")
-    bot_user_id = get_bot_user_id(db)
-    if not bot_user_id:
-        logger.error("BOT_USER environment variable not set. Cannot fetch stats.")
-        raise HTTPException(status_code=404, detail="BOT_USER environment variable not set. Please configure it in your .env file.")
-
-    followers = db.query(models.Event).filter(models.Event.event_type == "follow").count()
-    unfollows = db.query(models.Event).filter(models.Event.event_type == "unfollow").count()
-    stars = db.query(models.Event).filter(models.Event.event_type == "star").count()
-    unstars = db.query(models.Event).filter(models.Event.event_type == "unstar").count()
-    growth_stars = db.query(models.Event).filter(models.Event.event_type == "growth_star").count()
-
-    follow_backs = get_follow_backs(db)
-    total_follows = followers # Assuming 'followers' here means total follows made by the bot
-    reciprocity_rate = (follow_backs / total_follows) * 100 if total_follows > 0 else 0
-    top_repositories = get_top_repositories(db)
-    suggested_users = get_suggested_users(db)
-
-    logger.info("Statistics fetched successfully.")
-    return {"followers": followers, "unfollows": unfollows, "stars": stars, "unstars": unstars, "growth_stars": growth_stars, "follow_backs": follow_backs, "reciprocity_rate": reciprocity_rate, "top_repositories": top_repositories, "suggested_users": suggested_users}
 
 def get_events(db: Session, skip: int = 0, limit: int = 100):
     logger.info(f"Fetching events with skip={skip}, limit={limit}.")
@@ -277,3 +146,53 @@ def remove_whitelist_user(db: Session, username: str):
         db.commit()
         return {"message": "User removed from whitelist"}
     raise HTTPException(status_code=404, detail="User not found in whitelist")
+
+def get_active_follows(db: Session):
+    logger.info("Calculating active follows from events.")
+    bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        return {}
+
+    # Fetch all follow and unfollow events by the bot
+    events = db.query(models.Event).filter(
+        models.Event.source_user_id == bot_user_id,
+        models.Event.event_type.in_(["follow", "unfollow"])
+    ).order_by(models.Event.timestamp.asc()).all()
+
+    active_follows = {}
+    for event in events:
+        if event.target_user:
+            username = event.target_user.username.lower()
+            if event.event_type == "follow":
+                active_follows[username] = event.timestamp.isoformat()
+            elif event.event_type == "unfollow":
+                if username in active_follows:
+                    del active_follows[username]
+
+    logger.info(f"Found {len(active_follows)} active follows.")
+    return active_follows
+
+def get_growth_starred_users(db: Session):
+    logger.info("Fetching growth starred users from events.")
+    bot_user_id = get_bot_user_id(db)
+    if not bot_user_id:
+        return []
+
+    # Fetch all growth_star events
+    # We only need the target usernames
+    # Assuming target_user_id is populated for growth_star events
+    # If not, we might need to check how send_event handles it.
+    # scripts/autostargrow.py sends "growth_star" with "username" param.
+    # backend/main.py create_event endpoint looks up user_id from username if provided.
+    # So target_user_id should be set.
+
+    starred_users = db.query(models.User.username).join(
+        models.Event, models.User.id == models.Event.target_user_id
+    ).filter(
+        models.Event.event_type == "growth_star"
+    ).distinct().all()
+
+    # starred_users is a list of tuples [('username',), ...]
+    result = [u[0] for u in starred_users]
+    logger.info(f"Found {len(result)} growth starred users.")
+    return result

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Play, Settings, X } from 'lucide-react';
+import { Play, Settings, X, Cloud, Laptop } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AutomationConfigForm from './AutomationConfigForm';
+import AutomationLogs from './AutomationLogs';
 
 interface AutomationConfig {
     followersPerRun?: number;
@@ -56,37 +58,64 @@ const AutomationLauncher: React.FC<AutomationLauncherProps> = ({ isOpen, onClose
         growthSample: 10
     });
     const [isRunning, setIsRunning] = useState(false);
+    const [executionMode, setExecutionMode] = useState<'local' | 'cloud'>('local');
+    const [logs, setLogs] = useState<string[]>([]);
 
     const currentScript = AUTOMATION_SCRIPTS.find(s => s.id === selectedScript);
 
     const handleLaunch = async () => {
         setIsRunning(true);
+        setLogs([]); // Clear previous logs
+
+        // Start SSE for local mode
+        let eventSource: EventSource | null = null;
+        if (executionMode === 'local') {
+            eventSource = new EventSource('/api/automation/logs/stream');
+            eventSource.onmessage = (event) => {
+                setLogs(prev => [...prev, event.data]);
+            };
+            eventSource.onerror = (err) => {
+                console.error('SSE Error:', err);
+                eventSource?.close();
+            };
+        }
 
         try {
+            const token = localStorage.getItem('token');
+            const headers: HeadersInit = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch('/api/automation/run', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify({
                     action: selectedScript,
                     ref: 'main',
-                    inputs: config
+                    inputs: config,
+                    execution_mode: executionMode
                 })
             });
 
             if (response.ok) {
                 const result = await response.json();
                 console.log('Automation started:', result);
-                alert(`✅ ${currentScript?.name} automation started!\n\nWorkflow: ${result.workflow}\nCheck GitHub Actions for logs.`);
-                onClose();
+                if (executionMode === 'cloud') {
+                    alert(`✅ ${currentScript?.name} automation started!\n\nWorkflow: ${result.workflow}\nCheck GitHub Actions for logs.`);
+                    onClose();
+                }
             } else {
                 const error = await response.json();
                 alert(`❌ Failed to start automation:\n${error.detail}`);
+                setIsRunning(false);
+                eventSource?.close();
             }
         } catch (error) {
             console.error('Launch error:', error);
             alert(`❌ Error: ${error}`);
-        } finally {
             setIsRunning(false);
+            eventSource?.close();
         }
     };
 
@@ -126,6 +155,30 @@ const AutomationLauncher: React.FC<AutomationLauncherProps> = ({ isOpen, onClose
 
                         {/* Content */}
                         <div className="p-6 overflow-y-auto max-h-[calc(90vh-240px)]">
+                            {/* Execution Mode Toggle */}
+                            <div className="mb-6 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex">
+                                <button
+                                    onClick={() => setExecutionMode('local')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition ${executionMode === 'local'
+                                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                        }`}
+                                >
+                                    <Laptop className="w-4 h-4" />
+                                    Run Locally (Live Logs)
+                                </button>
+                                <button
+                                    onClick={() => setExecutionMode('cloud')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition ${executionMode === 'cloud'
+                                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                        }`}
+                                >
+                                    <Cloud className="w-4 h-4" />
+                                    Run on GitHub Cloud
+                                </button>
+                            </div>
+
                             {/* Script Selection */}
                             <div className="mb-6">
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
@@ -137,8 +190,8 @@ const AutomationLauncher: React.FC<AutomationLauncherProps> = ({ isOpen, onClose
                                             key={script.id}
                                             onClick={() => setSelectedScript(script.id)}
                                             className={`p-4 rounded-xl border-2 transition text-left ${selectedScript === script.id
-                                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                                                    : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-2">
@@ -155,93 +208,16 @@ const AutomationLauncher: React.FC<AutomationLauncherProps> = ({ isOpen, onClose
                                 </div>
                             </div>
 
-                            {/* Configuration */}
-                            {currentScript && currentScript.configs.length > 0 && (
-                                <div className="space-y-4 mb-6">
-                                    <h3 className="font-semibold text-slate-800 dark:text-white">Configuration</h3>
-
-                                    {currentScript.configs.includes('followersPerRun') && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Users to Follow Per Run
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.followersPerRun}
-                                                onChange={(e) => setConfig({ ...config, followersPerRun: parseInt(e.target.value) })}
-                                                min="1"
-                                                max="500"
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                            <p className="text-xs text-slate-500 mt-1">Range: 1-500</p>
-                                        </div>
-                                    )}
-
-                                    {currentScript.configs.includes('whitelist') && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Whitelist (comma-separated usernames)
-                                            </label>
-                                            <textarea
-                                                value={config.whitelist}
-                                                onChange={(e) => setConfig({ ...config, whitelist: e.target.value })}
-                                                placeholder="user1, user2, user3"
-                                                rows={3}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                            <p className="text-xs text-slate-500 mt-1">Users who will never be unfollowed</p>
-                                        </div>
-                                    )}
-
-                                    {currentScript.configs.includes('smartTargeting') && (
-                                        <div className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="smartTargeting"
-                                                checked={config.smartTargeting}
-                                                onChange={(e) => setConfig({ ...config, smartTargeting: e.target.checked })}
-                                                className="w-5 h-5 rounded border-slate-300"
-                                            />
-                                            <label htmlFor="smartTargeting" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                Enable Smart Targeting (AI-powered relevance filtering)
-                                            </label>
-                                        </div>
-                                    )}
-
-                                    {currentScript.configs.includes('targetInterests') && config.smartTargeting && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Target Interests
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={config.targetInterests}
-                                                onChange={(e) => setConfig({ ...config, targetInterests: e.target.value })}
-                                                placeholder="Python, AI, Web Development"
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                        </div>
-                                    )}
-
-                                    {currentScript.configs.includes('growthSample') && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Growth Sample Size
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.growthSample}
-                                                onChange={(e) => setConfig({ ...config, growthSample: parseInt(e.target.value) })}
-                                                min="1"
-                                                max="50"
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                            <p className="text-xs text-slate-500 mt-1">Number of new users to star repos from</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            {/* Configuration Form */}
+                            <AutomationConfigForm
+                                config={config}
+                                setConfig={setConfig}
+                                currentScript={currentScript}
+                            />
                         </div>
+
+                        {/* Live Logs */}
+                        <AutomationLogs logs={logs} executionMode={executionMode} />
 
                         {/* Footer */}
                         <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-800/50">

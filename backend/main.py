@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv, find_dotenv
@@ -17,6 +17,7 @@ import backend.models as models
 import backend.schemas as schemas
 from backend.database import SessionLocal, engine
 from backend.health import router as health_router
+from backend.automation import router as automation_router
 
 if os.getenv("ENABLE_SQLALCHEMY_CREATE_ALL", "false").lower() == "true":
     models.Base.metadata.create_all(bind=engine)
@@ -27,7 +28,8 @@ app = FastAPI(
     version="2.0.0"
 )
 
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+import asyncio
 
 @app.on_event("startup")
 async def validate_github_token():
@@ -96,11 +98,7 @@ async def start_alert_monitor():
                 await asyncio.sleep(60)
     asyncio.create_task(_loop())
 
-app = FastAPI(
-    title="AutoGitGrow API",
-    description="GitHub automation and analytics API",
-    version="2.0.0"
-)
+
 
 # CORS: restrict to configured frontend origin if provided
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN")
@@ -117,47 +115,79 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
-# Routers
-from backend.automation import router as automation_router
-# Include health check routes
+
+# Include Routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(automation_router, tags=["automation"])
+
+async def log_generator():
+    """Generates a stream of log lines from autostargrow.log."""
+    log_file = "autostargrow.log"
+    if not os.path.exists(log_file):
+        yield f"data: Log file {log_file} not found.\\n\\n"
+        return
+
+    try:
+        # Open file in non-blocking mode or just read line by line
+        with open(log_file, "r") as f:
+            # Seek to end to only show new logs? Or show last N lines?
+            # For now, let's show the last 1000 bytes and then tail
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            f.seek(max(file_size - 2000, 0), os.SEEK_SET)
+
+            while True:
+                line = f.readline()
+                if line:
+                    yield f"data: {line.strip()}\\n\\n"
+                else:
+                    await asyncio.sleep(0.5)
+    except Exception as e:
+        yield f"data: Error reading log file: {e}\\n\\n"
+
+@app.get("/api/automation/logs/stream")
+async def stream_logs(request: Request):
+    return StreamingResponse(log_generator(), media_type="text/event-stream")
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     logger.exception(f"An unexpected error occurred: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"message": "An internal server error occurred. Please try again later."},
+
+# Authentication
+from fastapi.security import OAuth2PasswordRequestForm
+from backend.auth import Token, authenticate_user, create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, User
+
+@app.post("/api/login", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
     )
+    return {"access_token": access_token, "token_type": "bearer"}
 
-# Simple in-memory rate limiter (per-IP token bucket)
-from time import time
-from typing import Dict
+# Rate Limiting
+from backend.rate_limiter import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
 
-RATE_LIMIT_CAPACITY = int(os.getenv("AUTOMATION_RATE_LIMIT_CAPACITY", "10"))  # tokens
-RATE_LIMIT_REFILL_PER_SEC = float(os.getenv("AUTOMATION_RATE_LIMIT_REFILL_PER_SEC", "0.5"))  # tokens/sec
+# Scheduler
+from backend.scheduler import start_scheduler, shutdown_scheduler
 
-_buckets: Dict[str, Dict[str, float]] = {}
+@app.on_event("startup")
+async def init_scheduler():
+    start_scheduler()
 
-@app.middleware("http")
-async def rate_limit_middleware(request, call_next):
-    if request.url.path.startswith("/api/automation/"):
-        now = time()
-        ip = request.client.host if request.client else "unknown"
-        b = _buckets.get(ip)
-        if not b:
-            b = {"tokens": float(RATE_LIMIT_CAPACITY), "ts": now}
-        else:
-            elapsed = now - b["ts"]
-            b["tokens"] = min(float(RATE_LIMIT_CAPACITY), b["tokens"] + elapsed * RATE_LIMIT_REFILL_PER_SEC)
-            b["ts"] = now
-        if b["tokens"] < 1.0:
-            return JSONResponse(status_code=429, content={"detail": "Too Many Requests"})
-        b["tokens"] -= 1.0
-        _buckets[ip] = b
-    response = await call_next(request)
-    return response
+@app.on_event("shutdown")
+async def stop_scheduler():
+    shutdown_scheduler()
+
+
 
 # Dependency
 def get_db():
@@ -172,7 +202,7 @@ def get_db():
 
 @app.post("/events/", response_model=schemas.Event)
 @app.post("/api/events/", response_model=schemas.Event)
-def create_event_for_user(event: schemas.EventCreate, db: Session = Depends(get_db)):
+def create_event_for_user(event: schemas.EventCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info(f"Received request to create event for user: {event.source_user_id} and {event.target_user_id}")
     return crud.create_event(db=db, event=event, source_user_id=event.source_user_id, target_user_id=event.target_user_id, repository_name=event.repository_name)
 
@@ -187,55 +217,51 @@ def read_user(username: str, db: Session = Depends(get_db)):
     return db_user
 
 @app.get("/api/stats")
-def read_stats(db: Session = Depends(get_db)):
+def read_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info("Received request to read stats.")
-    from backend.crud_real_data import get_real_stats
-    return get_real_stats(db)
-
-@app.get("/api/activity-feed", response_model=List[schemas.Event])
-def read_events(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    logger.info(f"Received request to read activity feed with skip={skip}, limit={limit}.")
-    events = crud.get_events(db, skip=skip, limit=limit)
-    return events
-
-@app.post("/api/follower-history/", response_model=schemas.FollowerHistory)
-def create_follower_history(count: int, db: Session = Depends(get_db)):
-    logger.info(f"Received request to create follower history with count: {count}.")
-    return crud.create_follower_history(db=db, count=count)
-
 @app.get("/api/follower-growth", response_model=List[schemas.FollowerHistory])
-def read_follower_history(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_follower_history(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info(f"Received request to read follower history with skip={skip}, limit={limit}.")
     follower_history = crud.get_follower_history(db, skip=skip, limit=limit)
     return follower_history
 
 @app.get("/api/reciprocity")
-def read_reciprocity(db: Session = Depends(get_db)):
+def read_reciprocity(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info("Received request to read reciprocity data.")
     from backend.crud_real_data import get_real_reciprocity
     return get_real_reciprocity(db)
 
 @app.post("/api/detailed-users")
-def read_detailed_users(usernames: List[str], db: Session = Depends(get_db)):
+def read_detailed_users(usernames: List[str], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info(f"Received request to read detailed users for: {usernames}.")
     return crud.get_detailed_users(db, usernames)
 
 @app.post("/api/detailed-repositories")
-def read_detailed_repositories(repo_names: List[str], db: Session = Depends(get_db)):
+def read_detailed_repositories(repo_names: List[str], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info(f"Received request to read detailed repositories for: {repo_names}.")
     return crud.get_detailed_repositories(db, repo_names)
 
 @app.get("/api/user/me")
-def read_current_user(db: Session = Depends(get_db)):
+def read_current_user(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info("Received request to read current bot user details.")
     return crud.get_bot_user_details(db)
 
 @app.get("/api/settings/whitelist", response_model=List[schemas.WhitelistItem])
-def read_whitelist(db: Session = Depends(get_db)):
+def read_whitelist(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return crud.get_whitelist(db)
 
+@app.get("/api/follows/active")
+def read_active_follows(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    logger.info("Received request to read active follows.")
+    return crud.get_active_follows(db)
+
+@app.get("/api/stars/growth")
+def read_growth_starred_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    logger.info("Received request to read growth starred users.")
+    return crud.get_growth_starred_users(db)
+
 @app.post("/api/settings/whitelist")
-def update_whitelist(data: schemas.WhitelistUpdate, db: Session = Depends(get_db)):
+def update_whitelist(data: schemas.WhitelistUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info("Received request to update whitelist.")
 
     # Parse the content string into a set of usernames
@@ -258,7 +284,7 @@ def update_whitelist(data: schemas.WhitelistUpdate, db: Session = Depends(get_db
 import google.generativeai as genai
 
 @app.post("/api/gemini/insight")
-async def generate_gemini_insight(request: schemas.GeminiInsightRequest):
+async def generate_gemini_insight(request: schemas.GeminiInsightRequest, current_user: User = Depends(get_current_user)):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured on backend.")
@@ -307,7 +333,7 @@ async def generate_gemini_insight(request: schemas.GeminiInsightRequest):
         raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
 
 @app.post("/api/gemini/analyze-user", response_model=schemas.UserAnalysisResponse)
-async def analyze_user(request: schemas.UserAnalysisRequest):
+async def analyze_user(request: schemas.UserAnalysisRequest, current_user: User = Depends(get_current_user)):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured on backend.")
@@ -365,3 +391,32 @@ async def analyze_user(request: schemas.UserAnalysisRequest):
             reason="AI analysis failed, defaulting to relevant.",
             confidence_score=0.0
         )
+from backend.services.growth_service import GrowthService
+from backend.services.star_service import StarService
+from fastapi import BackgroundTasks
+
+@app.post("/api/automation/growth/run")
+async def run_growth_automation(background_tasks: BackgroundTasks, dry_run: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Triggers the Growth Automation (GitGrow) logic.
+    Runs in the background.
+    """
+    def _run_growth():
+        service = GrowthService(db)
+        service.run_growth_cycle(dry_run=dry_run)
+
+    background_tasks.add_task(_run_growth)
+    return {"message": "Growth automation started in background", "dry_run": dry_run}
+
+@app.post("/api/automation/stars/run")
+async def run_star_automation(background_tasks: BackgroundTasks, dry_run: bool = False, growth_sample: int = 10, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Triggers the Star Growth Automation (AutoStarGrow) logic.
+    Runs in the background.
+    """
+    def _run_stars():
+        service = StarService(db)
+        service.run_star_cycle(dry_run=dry_run, growth_sample=growth_sample)
+
+    background_tasks.add_task(_run_stars)
+    return {"message": "Star growth automation started in background", "dry_run": dry_run}

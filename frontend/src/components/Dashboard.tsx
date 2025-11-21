@@ -15,7 +15,8 @@ import {
     X,
     Search,
     Bell,
-    Play
+    Play,
+    Download
 } from 'lucide-react';
 import {
     STATS_ENDPOINT,
@@ -24,7 +25,7 @@ import {
     RECIPROCITY_ENDPOINT
 } from '../lib/api';
 import StatCard from './StatCard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import GrowthVelocityChart from './GrowthVelocityChart';
 import GeminiInsights from './GeminiInsights';
 import SystemHealth from './SystemHealth';
 import AutomationsPanel from './AutomationsPanel';
@@ -41,26 +42,31 @@ import { userLevelAtom, userXPAtom } from '../lib/state';
 import { Progress } from './ui/progress';
 
 // --- Fetch Functions ---
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 const fetchStats = async () => {
-    const res = await fetch(STATS_ENDPOINT);
+    const res = await fetch(STATS_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch stats');
     return res.json();
 };
 
 const fetchActivityFeed = async () => {
-    const res = await fetch(ACTIVITY_FEED_ENDPOINT);
+    const res = await fetch(ACTIVITY_FEED_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch activity feed');
     return res.json();
 };
 
 const fetchFollowerGrowth = async () => {
-    const res = await fetch(FOLLOWER_GROWTH_ENDPOINT);
+    const res = await fetch(FOLLOWER_GROWTH_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch follower growth');
     return res.json();
 };
 
 const fetchReciprocity = async () => {
-    const res = await fetch(RECIPROCITY_ENDPOINT);
+    const res = await fetch(RECIPROCITY_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch reciprocity data');
     return res.json();
 };
@@ -123,8 +129,29 @@ const Dashboard = ({ view }: { view: string }) => {
 
     // Prepare data for Heatmap (mocked for now based on activity feed if needed, or static)
     const heatmapData = useMemo(() => {
-        // Transform activity feed into heatmap format if possible, or use mock
-        return [];
+        if (!activityFeed) return [];
+
+        const counts: Record<string, number> = {};
+        activityFeed.forEach((item: any) => {
+            // item.time is "YYYY-MM-DD HH:MM:SS"
+            const date = item.time.split(' ')[0];
+            counts[date] = (counts[date] || 0) + 1;
+        });
+
+        const days = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = counts[dateStr] || 0;
+            let type: 'high' | 'medium' | 'low' | 'none' = 'none';
+            if (count > 5) type = 'high';
+            else if (count > 2) type = 'medium';
+            else if (count > 0) type = 'low';
+
+            days.push({ date: dateStr, count, type });
+        }
+        return days;
     }, [activityFeed]);
 
     // Prepare nodes for 3D Graph
@@ -143,13 +170,52 @@ const Dashboard = ({ view }: { view: string }) => {
         return { nodes, links };
     }, [reciprocity]);
 
+    const handleExportData = () => {
+        const dataToExport = {
+            stats,
+            followerGrowth,
+            activityFeed,
+            reciprocity,
+            exportedAt: new Date().toISOString(),
+        };
+
+        // JSON Export
+        const jsonBlob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+        const jsonUrl = URL.createObjectURL(jsonBlob);
+        const jsonLink = document.createElement('a');
+        jsonLink.href = jsonUrl;
+        jsonLink.download = `autogitgrow-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(jsonLink);
+        jsonLink.click();
+        document.body.removeChild(jsonLink);
+        URL.revokeObjectURL(jsonUrl);
+
+        // CSV Export (Follower Growth)
+        if (followerGrowth && followerGrowth.length > 0) {
+            const headers = Object.keys(followerGrowth[0]).join(',');
+            const rows = followerGrowth.map((row: any) => Object.values(row).join(',')).join('\n');
+            const csvContent = `${headers}\n${rows}`;
+            const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const csvUrl = URL.createObjectURL(csvBlob);
+            const csvLink = document.createElement('a');
+            csvLink.href = csvUrl;
+            csvLink.download = `autogitgrow-growth-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(csvLink);
+            csvLink.click();
+            document.body.removeChild(csvLink);
+            URL.revokeObjectURL(csvUrl);
+        }
+
+        toast.success('Data exported successfully (JSON & CSV)');
+    };
+
     return (
         <div className="space-y-8">
             <AutomationLauncher isOpen={launcherOpen} onClose={() => setLauncherOpen(false)} />
             {/* Header with Gamification and System Health */}
             <header className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                         {view === 'overview' && 'Dashboard'}
                         {view === 'network' && 'Network Analysis'}
                         {view === 'discovery' && 'Discovery'}
@@ -182,6 +248,14 @@ const Dashboard = ({ view }: { view: string }) => {
                         Start Automation
                     </button>
 
+                    <button
+                        onClick={handleExportData}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm font-medium text-sm mr-4"
+                    >
+                        <Download className="w-4 h-4" />
+                        Export Data
+                    </button>
+
                     <SystemHealth />
 
                     <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors relative">
@@ -196,7 +270,7 @@ const Dashboard = ({ view }: { view: string }) => {
 
             {view === 'overview' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         <StatCard title="Total Followers" value={stats?.followers || 0} icon={Users} color="text-blue-500" automationId="gitgrow" />
                         <StatCard title="Following" value={stats?.following || 0} icon={UserPlus} color="text-green-500" automationId="autounstarback" />
                         <StatCard title="Starred Repos" value={stats?.starred_repos || 0} icon={Star} color="text-yellow-500" automationId="autostargrow" />
@@ -205,28 +279,10 @@ const Dashboard = ({ view }: { view: string }) => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
+                            <GrowthVelocityChart data={followerGrowth || []} />
+
                             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <h3 className="text-lg font-semibold mb-6 text-slate-800 dark:text-white">Growth Trends</h3>
-                                <div className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={followerGrowth || []}>
-                                            <defs>
-                                                <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} className="dark:stroke-slate-800" />
-                                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                                                itemStyle={{ color: '#fff' }}
-                                            />
-                                            <Area type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorFollowers)" />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                <ActivityHeatmap activity={heatmapData} />
                             </div>
                         </div>
 

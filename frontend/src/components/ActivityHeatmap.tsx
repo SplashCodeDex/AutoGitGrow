@@ -9,17 +9,8 @@ interface ActivityHeatmapProps {
 const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ activity }) => {
     const { isDarkMode } = useTheme();
 
-    // Generate dummy data if empty (last 30 days)
-    const data = activity.length > 0 ? activity : Array.from({ length: 30 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (29 - i));
-        const count = Math.floor(Math.random() * 5);
-        return {
-            date: d.toISOString().split('T')[0],
-            count,
-            type: count > 3 ? 'high' : count > 1 ? 'medium' : count > 0 ? 'low' : 'none'
-        };
-    });
+    // Use provided activity data
+    const data = activity;
 
     const getColor = (type: string) => {
         switch (type) {
@@ -41,7 +32,7 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ activity }) => {
                         <Tooltip key={i}>
                             <TooltipTrigger>
                                 <div
-                                    className={`w-3 h-3 rounded-sm ${getColor(day.type as string)} transition-colors hover:ring-2 ring-offset-1 ring-indigo-500 dark:ring-offset-slate-900`}
+                                    className={`w-3 h-3 sm:w-4 sm:h-4 rounded-sm ${getColor(day.type as string)} transition-colors hover:ring-2 ring-offset-1 ring-indigo-500 dark:ring-offset-slate-900`}
                                 />
                             </TooltipTrigger>
                             <TooltipContent>
