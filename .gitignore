@@ -58,3 +58,5 @@ sql_app.db
 config/follow_dates.json
 .env
 sql_app.db
+
+
