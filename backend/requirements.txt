@@ -15,3 +15,4 @@ google-generativeai
 apscheduler
 python-jose[cryptography]
 passlib[bcrypt]
+python-multipart

@@ -58,3 +58,4 @@ sql_app.db
 config/follow_dates.json
 .env
 
+user-feedbacks.md

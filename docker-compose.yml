@@ -1,68 +1,21 @@
+version: '3.8'
+
 services:
-  db:
-    image: postgres:13-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432" # Expose for local access if needed
-
-  init-db:
-    build: ./backend
-    command: /bin/sh -c "python -c 'from database import engine; from models import Base; Base.metadata.create_all(bind=engine); print(\"Database initialized\")'" # Command to initialize database
-    volumes:
-      - ./backend:/app/backend
-    environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
-    depends_on:
-      - db # Ensure db is ready before running migrations
-
   backend:
     build: ./backend
-    restart: always
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
-      PAT_TOKEN: ${PAT_TOKEN}
-      GITHUB_PAT: ${GITHUB_PAT}
-      BOT_USER: ${BOT_USER}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-    depends_on:
-      - db
-      - init-db # Ensure migrations are applied before backend starts
+    volumes:
+      - ./sql_app.db:/app/sql_app.db
+      - ./config:/app/config
+    env_file:
+      - .env
+    restart: always
 
   frontend:
     build: ./frontend
-    restart: always
     ports:
       - "80:80"
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     depends_on:
-      - backend # Frontend needs backend to be up for API calls
-
-  scheduler:
-    build: ./backend # Use the backend image as it has Python dependencies
+      - backend
     restart: always
-    volumes:
-      - ./scripts:/app/scripts # Mount scripts directory
-      - ./config:/app/config # Mount config directory
-    environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db/${DB_NAME}
-      PAT_TOKEN: ${PAT_TOKEN}
-      GITHUB_PAT: ${GITHUB_PAT}
-      BOT_USER: ${BOT_USER}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-    # Command to install cron and start it, directing logs to stdout
-    command: /bin/sh -c "apt-get update && apt-get install -y cron && (crontab -l 2>/dev/null; echo \"* * * * * python -u /app/scripts/autotrack.py 2>&1\") | crontab - && cron -f"
-    depends_on:
-      - db # Scripts might need database access
-      - backend # If scripts interact with backend API, they should depend on it
-
-volumes:
-  db_data:

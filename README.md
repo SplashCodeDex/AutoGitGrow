@@ -77,7 +77,25 @@ git clone https://github.com/SplashCodeDex/AutoGitGrow.git
 cd AutoGitGrow
 ```
 
-### 2. Environment Variables Setup
+### 2. Run with Docker (Recommended)
+
+The easiest way to run AutoGitGrow is using Docker Compose. This will start both the backend API and the frontend dashboard in containers.
+
+1.  **Create a `.env` file** (see below).
+2.  **Run the stack:**
+    ```bash
+    docker-compose up --build -d
+    ```
+3.  **Access the app:**
+    *   Frontend: `http://localhost`
+    *   Backend API Docs: `http://localhost:8000/docs`
+
+To stop the application:
+```bash
+docker-compose down
+```
+
+### 3. Manual Setup (Without Docker)
 
 Create a `.env` file in the root of your project directory. This file will store sensitive information and configuration for local development. You can use `.env.example` as a template.
 
