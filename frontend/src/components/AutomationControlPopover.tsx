@@ -49,7 +49,7 @@ const AutomationControlPopover: React.FC<AutomationControlPopoverProps> = ({
                                 <Terminal className="w-4 h-4 text-indigo-500" />
                                 {title}
                             </h3>
-                            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+                            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="Close">
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
