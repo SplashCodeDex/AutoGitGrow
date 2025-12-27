@@ -3,6 +3,12 @@
 import { Moon, Sun } from 'lucide-react';
 import { useCallback } from 'react';
 import { Button } from './button'; // Corrected import path
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './tooltip';
 import { cn } from '../../lib/utils'; // Corrected import path
 
 type AnimationVariant =
@@ -173,29 +179,38 @@ export const ThemeToggleButton = ({
     onClick?.();
   }, [onClick, variant, start, url, isDarkMode]);
 
+  const tooltipContent = `Switch to ${isDarkMode ? 'light' : 'dark'} theme`;
+
   return (
-    <Button
-      variant="outline"
-      size={showLabel ? 'default' : 'icon'}
-      onClick={handleClick}
-      className={cn(
-        'relative overflow-hidden transition-all',
-        showLabel && 'gap-2',
-        className
-      )}
-      aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} theme`}
-    >
-      {isDarkMode ? (
-        <Moon className="h-[1.2rem] w-[1.2rem]" />
-      ) : (
-        <Sun className="h-[1.2rem] w-[1.2rem]" />
-      )}
-      {showLabel && (
-        <span className="text-sm">
-          {isDarkMode ? 'Dark' : 'Light'}
-        </span>
-      )}
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size={showLabel ? 'default' : 'icon'}
+            onClick={handleClick}
+            className={cn(
+              'relative overflow-hidden transition-all',
+              showLabel && 'gap-2',
+              className
+            )}
+            aria-label={tooltipContent}
+          >
+            {isDarkMode ? (
+              <Moon className="h-[1.2rem] w-[1.2rem]" />
+            ) : (
+              <Sun className="h-[1.2rem] w-[1.2rem]" />
+            )}
+            {showLabel && (
+              <span className="text-sm">
+                {isDarkMode ? 'Dark' : 'Light'}
+              </span>
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{tooltipContent}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
