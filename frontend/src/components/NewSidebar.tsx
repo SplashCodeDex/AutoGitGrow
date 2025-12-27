@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Settings, LogOut, User, Github } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ThemeToggleButton } from './ui/theme-toggle-button';
 
 interface NavItem {
     id: string;
@@ -96,6 +97,16 @@ const NewSidebar: React.FC<NewSidebarProps> = ({ navItems }) => {
 
                 {/* Footer Actions */}
                 <div className="p-3 border-t border-gray-200 dark:border-gray-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                        <ThemeToggleButton />
+                        <button
+                            onClick={toggleSidebar}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
+                            aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                        >
+                            {isOpen ? <X className="w-5 h-5 shrink-0" /> : <Menu className="w-5 h-5 shrink-0" />}
+                        </button>
+                    </div>
                     <Link
                         to="/settings"
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
@@ -106,13 +117,7 @@ const NewSidebar: React.FC<NewSidebarProps> = ({ navItems }) => {
                         <Settings className="w-5 h-5 shrink-0" />
                         {isOpen && <span>Settings</span>}
                     </Link>
-                    <button
-                        onClick={toggleSidebar}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200"
-                    >
-                        {isOpen ? <Menu className="w-5 h-5 shrink-0" /> : <Menu className="w-5 h-5 shrink-0" />}
-                        {isOpen && <span>Collapse</span>}
-                    </button>
+
                     <button
                         onClick={logout}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
