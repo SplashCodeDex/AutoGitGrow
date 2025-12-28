@@ -1,3 +1,5 @@
+import os
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -5,9 +7,33 @@ from backend.database import get_db
 from backend.services.growth_service import GrowthService
 from backend.services.star_service import StarService
 from backend.utils import logger
-from backend.auth import get_current_user, User  # Added for unified auth enforcement
+from backend.auth import get_current_user, User, OAuth2PasswordBearer
 
 router = APIRouter(tags=["automation"])
+
+# Optional OAuth2 scheme to allow API Key bypass without Bearer token
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login", auto_error=False)
+
+async def get_automation_user(
+    request: Request,
+    token: Optional[str] = Depends(optional_oauth2_scheme)
+) -> Optional[User]:
+    """Hybrid dependency: Allows either valid JWT token or configured API Key."""
+    # Priority 1: API Key bypass
+    api_key_header = request.headers.get("X-Automation-Key")
+    configured_key = os.getenv("AUTOMATION_API_KEY")
+    if configured_key and api_key_header == configured_key:
+        return User(username="automation_api_key_user")
+
+    # Priority 2: JWT Session
+    if token:
+        try:
+            return await get_current_user(token)
+        except Exception:
+            pass
+
+    # Fail
+    raise HTTPException(status_code=401, detail="Invalid Automation API Key or missing session.")
 
 class AutomationRunRequest(BaseModel):
     action: str
@@ -33,10 +59,11 @@ def run_automation(
     req: AutomationRunRequest,
     background_tasks: BackgroundTasks,
     request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_automation_user)
 ):
     action = req.action.strip()
-    logger.info(f"Automation requested: {action} (mode={req.execution_mode})")
+    logger.info(f"Automation requested: {action} (mode={req.execution_mode}) by {user.username}")
 
     # For now, we override "local" execution mode to use our new Services
     if req.execution_mode == "local" or req.execution_mode == "service":

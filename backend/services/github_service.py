@@ -6,10 +6,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import os
 from github import Github
+from tenacity import retry, stop_after_attempt, wait_exponential
 from backend.utils import logger
 import backend.models as models
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def get_real_stats(db: Session):
     """Fetch REAL GitHub statistics from the API."""
     logger.info("Fetching REAL GitHub statistics from API.")
@@ -34,13 +36,14 @@ def get_real_stats(db: Session):
         following_count = me.following
         public_repos = me.public_repos
 
-        # Calculate starred repos count
-        logger.info("Fetching starred repos...")
-        starred_repos = list(me.get_starred())
-        starred_repos_count = len(starred_repos)
+        # Real counts from GitHub - Use totalCount for massive performance gains
+        logger.info("Fetching starred repos count...")
+        starred_repos_count = me.get_starred().totalCount
 
         # Calculate mutuals
         logger.info("Calculating mutuals from followers and following...")
+        # Note: Large networks still trigger multiple API calls here.
+        # Future optimization: only fetch sample or use GitHub's GraphQL.
         followers_set = {f.login.lower() for f in me.get_followers()}
         following_set = {f.login.lower() for f in me.get_following()}
         mutual_followers_count = len(followers_set.intersection(following_set))
@@ -67,6 +70,7 @@ def get_real_stats(db: Session):
         raise HTTPException(status_code=500, detail=f"GitHub API error: {str(e)}")
 
 
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=5))
 def get_real_reciprocity(db: Session):
     """Fetch REAL reciprocity data from GitHub API."""
     logger.info("Fetching REAL reciprocity data from GitHub API.")
@@ -109,6 +113,7 @@ def get_real_reciprocity(db: Session):
         return {"mutuals": [], "fans": [], "following_only": []}
 
 
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=5))
 def get_real_activity_feed(db: Session, skip: int = 0, limit: int = 20):
     """Fetch real activity feed from GitHub events."""
     logger.info(f"Fetching REAL activity feed from GitHub API (skip={skip}, limit={limit})")
@@ -122,14 +127,12 @@ def get_real_activity_feed(db: Session, skip: int = 0, limit: int = 20):
 
     try:
         me = g.get_user()
-        events = me.get_events()
+        # Optimization: Fetch only the first page (30 events) to avoid deep paging delays.
+        events = me.get_events().get_page(0)
 
         feed = []
         count = 0
         # iterate through events, skipping 'skip' and taking 'limit'
-        # Note: GitHub API pagination is page-based, but PyGithub handles it.
-        # We'll manually skip/limit for simplicity on the iterator
-
         for event in events:
             if count < skip:
                 count += 1

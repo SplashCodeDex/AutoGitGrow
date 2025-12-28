@@ -60,3 +60,4 @@ config/follow_dates.json
 
 user-feedbacks.md
 test_results*.txt
+test_out*.txt

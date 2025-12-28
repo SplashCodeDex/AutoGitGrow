@@ -7,6 +7,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=False)  # .env
 load_dotenv(find_dotenv('.env.local'), override=True)  # optional overrides
 import requests
+import httpx
 import asyncio
 import time as _t
 from backend.utils import logger
@@ -30,10 +31,16 @@ app = FastAPI(
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     logger.exception(f"An unexpected error occurred: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred. Please check logs."},
+    )
 
-# Validate Token on Startup
 @app.on_event("startup")
 async def validate_github_token():
+    if os.getenv("TESTING") == "true":
+        logger.info("Skipping GitHub token validation in test mode.")
+        return
     # Validate token scopes if possible
     try:
         token = os.getenv("GITHUB_PAT")
@@ -49,15 +56,11 @@ async def validate_github_token():
     except Exception as e:
         logger.warning("Token validation failed: %s", e)
 
-# Alert Monitor on Startup
 @app.on_event("startup")
-async def start_alert_monitor():
-    # Migrate whitelist from file to DB if DB is empty
+async def migrate_whitelist_on_startup():
+    """Migrate whitelist from file to DB if DB is empty."""
     try:
         db = SessionLocal()
-        # Moved whitelist model access to crud/models via session
-        # We need to import crud here to use it or do raw query
-        # But for startup script, direct import is fine
         from backend import crud
         if db.query(models.Whitelist).count() == 0:
             whitelist_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "public", "whitelist.txt")
@@ -69,48 +72,57 @@ async def start_alert_monitor():
                         try:
                             crud.add_whitelist_user(db, u)
                         except Exception:
-                            pass # Ignore duplicates or errors during migration
+                            pass
                 logger.info("Whitelist migration completed.")
         db.close()
     except Exception as e:
         logger.error(f"Whitelist migration failed: {e}")
 
+@app.on_event("startup")
+async def start_alert_monitor():
+    if os.getenv("TESTING") == "true":
+        logger.info("Skipping alert monitor in test mode.")
+        return
+
     webhook = os.getenv("SLACK_WEBHOOK_URL")
-    max_stale = int(os.getenv("ALERT_MAX_STALE_SECONDS", "3600"))
-    max_fail = int(os.getenv("ALERT_MAX_FAILURES", "3"))
     if not webhook:
         return
+
     from backend.routers.health import metrics
+    max_stale = int(os.getenv("ALERT_MAX_STALE_SECONDS", "3600"))
+    max_fail = int(os.getenv("ALERT_MAX_FAILURES", "3"))
 
     async def _loop():
-        while True:
-            try:
-                now = _t.time()
-                stale = []
-                for wf, ts in metrics.get("automation_last_success_timestamp", {}).items():
-                    if now - ts > max_stale:
-                        stale.append((wf, int(now - ts)))
-                fails = metrics.get("automation_dispatch_failures", 0)
-                if stale or fails >= max_fail:
-                    text = {
-                        "text": f"AutoGitGrow alert: stale={stale} failures={fails}"
-                    }
-                    try:
-                        requests.post(webhook, json=text, timeout=5)
-                    except Exception:
-                        pass
-                await asyncio.sleep(60)
-            except Exception:
-                await asyncio.sleep(60)
+        async with httpx.AsyncClient() as client:
+            while True:
+                try:
+                    now = _t.time()
+                    stale = []
+                    for wf, ts in metrics.get("automation_last_success_timestamp", {}).items():
+                         if now - ts > max_stale:
+                             stale.append((wf, int(now - ts)))
+                    fails = metrics.get("automation_dispatch_failures", 0)
+                    if stale or fails >= max_fail:
+                         text = {"text": f"AutoGitGrow alert: stale={stale} failures={fails}"}
+                         try:
+                             await client.post(webhook, json=text, timeout=5)
+                         except Exception:
+                             pass
+                    await asyncio.sleep(60)
+                except Exception:
+                    await asyncio.sleep(60)
+
     asyncio.create_task(_loop())
 
 # CORS: restrict to configured frontend origin if provided
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN")
+# CORS: restrict to configured frontend origins
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "")
 if FRONTEND_ORIGIN:
-    allow_origins = [FRONTEND_ORIGIN]
+    # Support comma-separated list of origins
+    allow_origins = [o.strip() for o in FRONTEND_ORIGIN.split(",") if o.strip()]
 else:
-    # Default for local development: allow the Vite dev server origin
-    allow_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Default for local development
+    allow_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -126,10 +138,15 @@ app.add_middleware(RateLimitMiddleware)
 # Scheduler
 @app.on_event("startup")
 async def init_scheduler():
+    if os.getenv("TESTING") == "true":
+        logger.info("Skipping scheduler initialization in test mode.")
+        return
     start_scheduler()
 
 @app.on_event("shutdown")
 async def stop_scheduler():
+    if os.getenv("TESTING") == "true":
+        return
     shutdown_scheduler()
 
 # Include Routers

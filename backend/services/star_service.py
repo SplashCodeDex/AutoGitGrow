@@ -16,10 +16,12 @@ class StarService:
         self.token = os.getenv("GITHUB_PAT")
         self.bot_user = os.getenv("BOT_USER")
         if not self.token or not self.bot_user:
-            raise ValueError("GITHUB_PAT and BOT_USER environment variables are required.")
-
-        self.gh = Github(self.token)
-        self.me = self._get_me()
+            logger.warning("GITHUB_PAT or BOT_USER environment variables not set. StarService may not function correctly.")
+            self.gh = None
+            self.me = None
+        else:
+            self.gh = Github(self.token)
+            self.me = self._get_me()
 
     @github_retry
     def _get_me(self):
@@ -53,6 +55,9 @@ class StarService:
         crud.create_event(self.db, event)
 
     def run_star_cycle(self, dry_run: bool = False, growth_sample: int = 10):
+        if not self.gh or not self.me:
+            logger.error("StarService: GitHub client not initialized. Skipping cycle.")
+            return
         logger.info("=== Starting Star Growth Cycle (Service) ===")
 
         # 1. Load Configuration

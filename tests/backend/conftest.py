@@ -1,6 +1,14 @@
-import pytest
 import os
 import sys
+
+# Mock environment variables required by services - MUST BE SET BEFORE BACKEND IMPORTS
+os.environ["BOT_USER"] = "test_bot"
+os.environ["GITHUB_PAT"] = "test_pat"
+os.environ["AUTOMATION_API_KEY"] = "test_automation_key"
+os.environ["SLACK_WEBHOOK_URL"] = "https://mock.slack.com"
+os.environ["TESTING"] = "true"
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

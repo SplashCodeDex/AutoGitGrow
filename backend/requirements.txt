@@ -19,5 +19,5 @@ python-multipart
 ruff
 mypy
 types-requests
-hoverfly
 rich
+tenacity
