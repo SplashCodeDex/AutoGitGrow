@@ -1,32 +1,41 @@
 import logging
 import os
+import time
+import functools
+from typing import Any, Callable
+from github import GithubException, Github
 
-def setup_logging():
+def setup_logging() -> logging.Logger:
     logger = logging.getLogger('AutoGitGrow')
     logger.setLevel(logging.INFO)
 
-    # Create handlers
-    c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler('autostargrow.log')
+    if not logger.handlers:
+        # Create handlers
+        try:
+            from rich.logging import RichHandler
+            c_handler: logging.Handler = RichHandler(rich_tracebacks=True)
+        except ImportError:
+            c_handler = logging.StreamHandler()
 
-    # Create formatters and add it to handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(formatter)
-    f_handler.setFormatter(formatter)
+        from logging.handlers import RotatingFileHandler
+        f_handler = RotatingFileHandler('autostargrow.log', maxBytes=5*1024*1024, backupCount=5)
 
-    # Add handlers to the logger
-    if not logger.handlers: # Prevent adding multiple handlers if setup_logging is called multiple times
+        # Create formatters and add it to handlers
+        c_format = logging.Formatter('%(message)s') if 'rich' in globals() else logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+        c_handler.setFormatter(c_format)
+        f_handler.setFormatter(f_format)
+
+        # Add handlers to the logger
         logger.addHandler(c_handler)
         logger.addHandler(f_handler)
+
     return logger
 
 logger = setup_logging()
 
-import time
-import functools
-from github import GithubException
-
-def handle_rate_limit(gh):
+def handle_rate_limit(gh: Github) -> None:
     """Pauses script execution until the GitHub API rate limit is reset."""
     try:
         rate_limit = gh.get_rate_limit()
@@ -38,14 +47,15 @@ def handle_rate_limit(gh):
     except Exception as e:
         logger.error(f"Error handling rate limit: {e}")
 
-def github_retry(func):
+def github_retry(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         while True:
             try:
                 return func(*args, **kwargs)
             except GithubException as e:
-                if e.status == 403 and 'rate limit exceeded' in e.data.get('message', ''):
+                # PyGithub 403 rate limit handling
+                if e.status == 403 and 'rate limit exceeded' in str(e):
                     # Attempt to find the Github object in args
                     gh_obj = None
                     for arg in args:
@@ -56,7 +66,7 @@ def github_retry(func):
                     if gh_obj:
                         handle_rate_limit(gh_obj)
                     else:
-                        logger.error(f"Rate limit exceeded but could not find Github object to check reset time.")
+                        logger.error("Rate limit exceeded but could not find Github object to check reset time.")
                         time.sleep(60) # Fallback sleep
                 else:
                     logger.error(f"GitHub API error in {func.__name__}: {e}")

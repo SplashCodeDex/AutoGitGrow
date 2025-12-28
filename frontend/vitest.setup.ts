@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+import { afterEach } from 'vitest';
 
-// Basic fetch mock; tests can override per case
-if (!(global as any).fetch) {
-  (global as any).fetch = async () => ({ ok: true, json: async () => ({}) }) as any;
-}
+afterEach(() => {
+  cleanup();
+});

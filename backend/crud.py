@@ -4,12 +4,12 @@ import backend.models as models
 import backend.schemas as schemas
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from sqlalchemy import func
 from github import Github
 from backend.utils import logger
 
-def get_detailed_users(db: Session, usernames: list[str]):
+def get_detailed_users(db: Session, usernames: list[str]) -> list[dict[str, Any]]:
     logger.info(f"Fetching detailed users for: {usernames}")
     g = Github(os.getenv("GITHUB_PAT"))
     detailed_users = []
@@ -27,7 +27,7 @@ def get_detailed_users(db: Session, usernames: list[str]):
             raise HTTPException(status_code=500, detail=f"Error fetching user {username} from GitHub: {e}")
     return detailed_users
 
-def get_detailed_repositories(db: Session, repo_names: list[str]):
+def get_detailed_repositories(db: Session, repo_names: list[str]) -> list[dict[str, Any]]:
     logger.info(f"Fetching detailed repositories for: {repo_names}")
     g = Github(os.getenv("GITHUB_PAT"))
     detailed_repos = []
@@ -45,11 +45,11 @@ def get_detailed_repositories(db: Session, repo_names: list[str]):
             raise HTTPException(status_code=500, detail=f"Error fetching repository {repo_name} from GitHub: {e}")
     return detailed_repos
 
-def get_user_by_username(db: Session, username: str):
+def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
     logger.info(f"Attempting to retrieve user by username: {username}")
     return db.query(models.User).filter(models.User.username == username).first()
 
-def create_user(db: Session, user: schemas.UserCreate):
+def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     logger.info(f"Creating new user: {user.username}")
     db_user = models.User(username=user.username)
     db.add(db_user)
@@ -58,7 +58,13 @@ def create_user(db: Session, user: schemas.UserCreate):
     logger.info(f"User created with ID: {db_user.id}")
     return db_user
 
-def get_bot_user_id(db: Session):
+def create_user_if_not_exists(db: Session, username: str) -> models.User:
+    user = get_user_by_username(db, username)
+    if not user:
+        user = create_user(db, schemas.UserCreate(username=username))
+    return user
+
+def get_bot_user_id(db: Session) -> Optional[int]:
     bot_username = os.getenv("BOT_USER")
     if not bot_username:
         logger.warning("BOT_USER environment variable not set.")
@@ -71,7 +77,7 @@ def get_bot_user_id(db: Session):
     logger.info(f"Bot user ID: {bot_user.id}")
     return bot_user.id
 
-def create_event(db: Session, event: schemas.EventCreate, source_user_id: Optional[int] = None, target_user_id: Optional[int] = None, repository_name: Optional[str] = None):
+def create_event(db: Session, event: schemas.EventCreate, source_user_id: Optional[int] = None, target_user_id: Optional[int] = None, repository_name: Optional[str] = None) -> models.Event:
     logger.info(f"Creating event of type '{event.event_type}' for source_user_id: {source_user_id}, target_user_id: {target_user_id}, repository_name: {repository_name}")
     db_event = models.Event(**event.model_dump())
     db.add(db_event)
@@ -80,13 +86,11 @@ def create_event(db: Session, event: schemas.EventCreate, source_user_id: Option
     logger.info(f"Event created with ID: {db_event.id}")
     return db_event
 
-
-
-def get_events(db: Session, skip: int = 0, limit: int = 100):
+def get_events(db: Session, skip: int = 0, limit: int = 100) -> list[models.Event]:
     logger.info(f"Fetching events with skip={skip}, limit={limit}.")
     return db.query(models.Event).options(joinedload(models.Event.source_user), joinedload(models.Event.target_user)).offset(skip).limit(limit).all()
 
-def create_follower_history(db: Session, count: int):
+def create_follower_history(db: Session, count: int) -> models.FollowerHistory:
     logger.info(f"Creating follower history with count: {count}.")
     db_follower_history = models.FollowerHistory(timestamp=datetime.now(timezone.utc), count=count)
     db.add(db_follower_history)
@@ -95,11 +99,11 @@ def create_follower_history(db: Session, count: int):
     logger.info(f"Follower history created with ID: {db_follower_history.id}.")
     return db_follower_history
 
-def get_follower_history(db: Session, skip: int = 0, limit: int = 100):
+def get_follower_history(db: Session, skip: int = 0, limit: int = 100) -> list[models.FollowerHistory]:
     logger.info(f"Fetching follower history with skip={skip}, limit={limit}.")
     return db.query(models.FollowerHistory).offset(skip).limit(limit).all()
 
-def get_bot_user_details(db: Session):
+def get_bot_user_details(db: Session) -> Optional[dict[str, Any]]:
     logger.info("Fetching bot user details.")
     bot_username = os.getenv("BOT_USER")
     if not bot_username:
@@ -121,11 +125,11 @@ def get_bot_user_details(db: Session):
         # Fallback to basic info if GitHub API fails
         return {"username": bot_username, "avatar_url": None, "html_url": f"https://github.com/{bot_username}", "name": bot_username, "bio": "GitHub Bot"}
 
-def get_whitelist(db: Session):
+def get_whitelist(db: Session) -> list[models.Whitelist]:
     logger.info("Fetching whitelist.")
     return db.query(models.Whitelist).all()
 
-def add_whitelist_user(db: Session, username: str):
+def add_whitelist_user(db: Session, username: str) -> models.Whitelist:
     logger.info(f"Adding user to whitelist: {username}")
     db_item = models.Whitelist(username=username)
     try:
@@ -138,7 +142,7 @@ def add_whitelist_user(db: Session, username: str):
         logger.error(f"Failed to add user to whitelist: {e}")
         raise HTTPException(status_code=400, detail="User already in whitelist or other error.")
 
-def remove_whitelist_user(db: Session, username: str):
+def remove_whitelist_user(db: Session, username: str) -> dict[str, str]:
     logger.info(f"Removing user from whitelist: {username}")
     db_item = db.query(models.Whitelist).filter(models.Whitelist.username == username).first()
     if db_item:
@@ -147,7 +151,7 @@ def remove_whitelist_user(db: Session, username: str):
         return {"message": "User removed from whitelist"}
     raise HTTPException(status_code=404, detail="User not found in whitelist")
 
-def get_active_follows(db: Session):
+def get_active_follows(db: Session) -> dict[str, str]:
     logger.info("Calculating active follows from events.")
     bot_user_id = get_bot_user_id(db)
     if not bot_user_id:
@@ -172,7 +176,7 @@ def get_active_follows(db: Session):
     logger.info(f"Found {len(active_follows)} active follows.")
     return active_follows
 
-def get_growth_starred_users(db: Session):
+def get_growth_starred_users(db: Session) -> list[str]:
     logger.info("Fetching growth starred users from events.")
     bot_user_id = get_bot_user_id(db)
     if not bot_user_id:

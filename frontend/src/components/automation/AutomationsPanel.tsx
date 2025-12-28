@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Play, Loader2, CheckCircle, XCircle, GitBranch, Activity, BarChart2 } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { AUTOMATION_RUN_ENDPOINT, AUTOMATION_RUNS_ENDPOINT, automationHeaders } from '../lib/api';
-import { useTheme } from '../lib/state';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
+import { AUTOMATION_RUN_ENDPOINT, AUTOMATION_RUNS_ENDPOINT, automationHeaders } from '../../lib/api';
+import { useTheme } from '../../lib/state';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 import AutomationSuccessChart from './AutomationSuccessChart';
 
 const WORKFLOWS = [
@@ -16,13 +16,32 @@ const WORKFLOWS = [
   { id: 'autounstarback', name: 'UnstarBack', description: 'Unstar non-recip', icon: Activity },
 ];
 
+interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ElementType;
+}
+
+interface LastRun {
+  last_run?: {
+    conclusion: string;
+    created_at: string;
+  };
+}
+
+interface AutomationItemProps {
+  workflow: Workflow;
+  lastRun?: LastRun;
+}
+
 const fetchAutomationRuns = async () => {
   const res = await fetch(AUTOMATION_RUNS_ENDPOINT, { headers: automationHeaders() });
   if (!res.ok) throw new Error('Failed to fetch runs');
   return res.json();
 };
 
-const AutomationItem = ({ workflow, lastRun }) => {
+const AutomationItem: React.FC<AutomationItemProps> = ({ workflow, lastRun }) => {
   const { isDarkMode } = useTheme();
   const [status, setStatus] = useState('idle'); // idle, running, success, error
 

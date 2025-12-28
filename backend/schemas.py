@@ -1,8 +1,16 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional
+from pydantic.alias_generators import to_camel
 
-class UserBase(BaseModel):
+class CamelModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
+class UserBase(CamelModel):
     username: str
 
 class UserCreate(UserBase):
@@ -10,11 +18,21 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
-    model_config = ConfigDict(from_attributes=True)
 
-User.model_rebuild()
+class UserProfile(CamelModel):
+    username: str
+    avatar_url: Optional[str] = None
+    html_url: Optional[str] = None
+    name: Optional[str] = None
+    bio: Optional[str] = None
 
-class EventBase(BaseModel):
+class DetailedUser(CamelModel):
+    username: str
+    avatar_url: Optional[str] = None
+    followers: Optional[int] = None
+    url: Optional[str] = None
+
+class EventBase(CamelModel):
     event_type: str
     timestamp: datetime
     source_user_id: Optional[int] = None
@@ -29,9 +47,7 @@ class Event(EventBase):
     source_user: Optional[User] = None
     target_user: Optional[User] = None
 
-    model_config = ConfigDict(from_attributes=True)
-
-class FollowerHistoryBase(BaseModel):
+class FollowerHistoryBase(CamelModel):
     timestamp: datetime
     count: int
 
@@ -41,35 +57,38 @@ class FollowerHistoryCreate(FollowerHistoryBase):
 class FollowerHistory(FollowerHistoryBase):
     id: int
 
-    model_config = ConfigDict(from_attributes=True)
-
-class ReciprocityData(BaseModel):
+class ReciprocityData(CamelModel):
     followed_back: List[str]
     not_followed_back: List[str]
 
-class WhitelistUpdate(BaseModel):
+class WhitelistUpdate(CamelModel):
     content: str
 
-class WhitelistItemBase(BaseModel):
+class WhitelistItemBase(CamelModel):
     username: str
 
 class WhitelistItemCreate(WhitelistItemBase):
-    reciprocityRate: float
+    reciprocity_rate: float
 
 class WhitelistItem(WhitelistItemBase):
     id: int
-    model_config = ConfigDict(from_attributes=True)
 
-class UserStats(BaseModel):
-    followersGained: int
-    followBacks: int
+class UserStats(CamelModel):
+    followers_gained: int
+    follow_backs: int
     unfollowed: int
     stargazers: int
-    reciprocityRate: float
+    reciprocity_rate: float
 
-class GeminiInsightRequest(BaseModel):
+class DashboardStats(CamelModel):
+    followers: int
+    following: int
+    starred_repos: int
+    mutual_followers: int
+
+class GeminiInsightRequest(CamelModel):
     stats: UserStats
-    growthData: List[FollowerHistory]
+    growth_data: List[FollowerHistory]
 
 class UserAnalysisRequest(BaseModel):
     username: str

@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 import sys
 import os
 
-# Add backend directory to Python path
-backend_path = os.path.join(os.path.dirname(__file__), '../../backend')
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
+# Add project root directory to Python path
+project_root = os.path.join(os.path.dirname(__file__), '../../')
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-import crud, models, schemas
+from backend import crud, models, schemas
 
 # Mock the database session
 @pytest.fixture
@@ -19,7 +19,7 @@ def test_get_user_by_username_found(db_session_mock):
     # Arrange
     username = "testuser"
     mock_user = models.User(id=1, username=username)
-    
+
     # Configure the mock session to return the mock user when queried
     db_session_mock.query.return_value.filter.return_value.first.return_value = mock_user
 
@@ -35,7 +35,7 @@ def test_get_user_by_username_found(db_session_mock):
 def test_get_user_by_username_not_found(db_session_mock):
     # Arrange
     username = "nonexistentuser"
-    
+
     # Configure the mock session to return None (user not found)
     db_session_mock.query.return_value.filter.return_value.first.return_value = None
 

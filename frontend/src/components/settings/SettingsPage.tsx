@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import PageHeader from './PageHeader';
-import { useTheme } from '../lib/state';
-import { API_BASE_URL } from '../lib/api';
-import SonnerDemo from './SonnerDemo';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/card';
-import { Button } from './ui/button';
+import PageHeader from '../PageHeader';
+import { useTheme } from '../../lib/state';
+import { API_BASE_URL } from '../../lib/api';
+import SonnerDemo from '../SonnerDemo';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
+import { Button } from '../ui/button';
+
+import { WhitelistItem } from '../../lib/types';
 
 const SettingsPage = () => {
     const { isDarkMode } = useTheme();
@@ -26,9 +28,9 @@ const SettingsPage = () => {
                 if (!response.ok) {
                     throw new Error(`Failed to fetch whitelist: ${response.statusText}`);
                 }
-                const data = await response.json();
+                const data: WhitelistItem[] = await response.json();
                 // Convert array of objects to newline-separated string
-                const content = data.map((item: any) => item.username).join('\n');
+                const content = data.map((item) => item.username).join('\n');
                 setWhitelistContent(content);
             } catch (err) {
                 console.error("Error fetching whitelist:", err);
@@ -63,8 +65,8 @@ const SettingsPage = () => {
             // Re-fetch to ensure sync
             const fetchResponse = await fetch(`${API_BASE_URL}/settings/whitelist`, { headers });
             if (fetchResponse.ok) {
-                const data = await fetchResponse.json();
-                const content = data.map((item: any) => item.username).join('\n');
+                const data: WhitelistItem[] = await fetchResponse.json();
+                const content = data.map((item) => item.username).join('\n');
                 setWhitelistContent(content);
             }
         } catch (err: any) {

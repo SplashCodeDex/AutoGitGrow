@@ -1,14 +1,13 @@
-import os
 from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
 from backend.database import get_db
 from backend.services.growth_service import GrowthService
 from backend.services.star_service import StarService
 from backend.utils import logger
+from backend.auth import get_current_user, User  # Added for unified auth enforcement
 
-router = APIRouter()
+router = APIRouter(tags=["automation"])
 
 class AutomationRunRequest(BaseModel):
     action: str
@@ -40,8 +39,6 @@ def run_automation(
     logger.info(f"Automation requested: {action} (mode={req.execution_mode})")
 
     # For now, we override "local" execution mode to use our new Services
-    # We can also support "workflow" mode if we want to keep dispatching to GitHub Actions
-
     if req.execution_mode == "local" or req.execution_mode == "service":
         if action == "gitgrow":
             def _run_growth():
@@ -72,17 +69,10 @@ def run_automation(
         elif action == "autounstarback":
              # We haven't ported this yet, or it might be part of gitgrow?
              # For now, return a message or implement if needed.
-             # gitgrow.py handles unfollowing, so maybe 'autounstarback' is redundant or specific?
-             # Let's assume it's not supported in service mode yet.
              raise HTTPException(status_code=501, detail="AutoUnstarBack service not yet implemented locally.")
 
         else:
             raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
-
-    # Fallback to original behavior (dispatch workflow) if mode is not local
-    # But since we removed the dispatch logic in the broken file, we'll just error for now
-    # or we can re-implement dispatch_workflow if needed.
-    # Given the goal is "Unification", we prefer services.
 
     raise HTTPException(status_code=400, detail="Only 'local' execution mode is currently supported via this endpoint.")
 
@@ -90,3 +80,30 @@ def run_automation(
 def get_automation_runs():
     # Placeholder for compatibility
     return []
+
+# Unified Manual Triggers from main.py
+@router.post("/api/automation/growth/run")
+async def run_growth_automation(background_tasks: BackgroundTasks, dry_run: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Triggers the Growth Automation (GitGrow) logic.
+    Runs in the background.
+    """
+    def _run_growth():
+        service = GrowthService(db)
+        service.run_growth_cycle(dry_run=dry_run)
+
+    background_tasks.add_task(_run_growth)
+    return {"message": "Growth automation started in background", "dry_run": dry_run}
+
+@router.post("/api/automation/stars/run")
+async def run_star_automation(background_tasks: BackgroundTasks, dry_run: bool = False, growth_sample: int = 10, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Triggers the Star Growth Automation (AutoStarGrow) logic.
+    Runs in the background.
+    """
+    def _run_stars():
+        service = StarService(db)
+        service.run_star_cycle(dry_run=dry_run, growth_sample=growth_sample)
+
+    background_tasks.add_task(_run_stars)
+    return {"message": "Star growth automation started in background", "dry_run": dry_run}

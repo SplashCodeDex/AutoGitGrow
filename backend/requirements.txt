@@ -16,3 +16,8 @@ apscheduler
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
+ruff
+mypy
+types-requests
+hoverfly
+rich

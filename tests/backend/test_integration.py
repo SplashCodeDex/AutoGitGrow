@@ -5,13 +5,13 @@ from sqlalchemy.orm import sessionmaker
 import sys
 import os
 
-# Add backend directory to Python path
-backend_path = os.path.join(os.path.dirname(__file__), '../../backend')
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
+# Add project root directory to Python path
+project_root = os.path.join(os.path.dirname(__file__), '../../')
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from main import app, get_db
-from database import Base
+from backend.main import app
+from backend.database import Base, get_db
 
 # Setup in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -37,28 +37,42 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture
+def client_fixture():
+    from backend.auth import get_current_user, User
 
-client = TestClient(app)
+    def override_get_current_user():
+        return User(username="testuser")
 
-def test_create_and_read_user():
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with TestClient(app) as c:
+        yield c
+
+    # Clean up overrides
+    app.dependency_overrides.clear()
+
+def test_create_and_read_user(client_fixture):
     # Test the main health endpoint
-    response = client.get("/health")
+    response = client_fixture.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     assert "status" in data
     assert data["status"] == "healthy"
 
-def test_health_endpoint():
+def test_health_endpoint(client_fixture):
     # Test the health endpoint which should always work
-    response = client.get("/health")
+    response = client_fixture.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     assert "status" in data
     assert data["status"] == "healthy"
 
-def test_api_stats_endpoint():
-    # Test the stats endpoint 
-    response = client.get("/api/stats")
-    # Should either work or return a reasonable error (e.g., if BOT_USER not set)
-    assert response.status_code in [200, 404, 500]
+def test_api_stats_endpoint(client_fixture):
+    # Test the stats endpoint
+    response = client_fixture.get("/api/stats")
+    assert response.status_code == 200
+    data = response.json()
+    # Check for expected keys in DashboardStats
+    assert "followers" in data
+    assert "following" in data

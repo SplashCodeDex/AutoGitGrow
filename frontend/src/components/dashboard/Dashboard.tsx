@@ -23,49 +23,51 @@ import {
     ACTIVITY_FEED_ENDPOINT,
     FOLLOWER_GROWTH_ENDPOINT,
     RECIPROCITY_ENDPOINT
-} from '../lib/api';
+} from '../../lib/api';
 import StatCard from './StatCard';
 import GrowthVelocityChart from './GrowthVelocityChart';
 import GeminiInsights from './GeminiInsights';
 import SystemHealth from './SystemHealth';
-import AutomationsPanel from './AutomationsPanel';
-import SettingsPage from './SettingsPage';
+import AutomationsPanel from '../automation/AutomationsPanel';
+import SettingsPage from '../settings/SettingsPage';
 import ConnectivityBanner from './ConnectivityBanner';
 import OnboardingMessage from './OnboardingMessage';
 import DismissibleAnnouncement from './DismissibleAnnouncement';
 import NetworkGraph3D from './NetworkGraph3D';
 import ActivityHeatmap from './ActivityHeatmap';
-import AutomationLauncher from './AutomationLauncher';
+import AutomationLauncher from '../automation/AutomationLauncher';
 import { toast } from 'sonner';
 import { useAtom } from 'jotai';
-import { userLevelAtom, userXPAtom } from '../lib/state';
-import { Progress } from './ui/progress';
+import { userLevelAtom, userXPAtom } from '../../lib/state';
+import { Progress } from '../ui/progress';
+
+import { ActivityItem, GrowthMetric, ReciprocityData, UserStats } from '../../lib/types';
 
 // --- Fetch Functions ---
-const getAuthHeaders = () => {
+const getAuthHeaders = (): HeadersInit => {
     const token = localStorage.getItem('token');
     return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
-const fetchStats = async () => {
+const fetchStats = async (): Promise<UserStats> => {
     const res = await fetch(STATS_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch stats');
     return res.json();
 };
 
-const fetchActivityFeed = async () => {
+const fetchActivityFeed = async (): Promise<ActivityItem[]> => {
     const res = await fetch(ACTIVITY_FEED_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch activity feed');
     return res.json();
 };
 
-const fetchFollowerGrowth = async () => {
+const fetchFollowerGrowth = async (): Promise<GrowthMetric[]> => {
     const res = await fetch(FOLLOWER_GROWTH_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch follower growth');
     return res.json();
 };
 
-const fetchReciprocity = async () => {
+const fetchReciprocity = async (): Promise<ReciprocityData> => {
     const res = await fetch(RECIPROCITY_ENDPOINT, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch reciprocity data');
     return res.json();
@@ -132,7 +134,7 @@ const Dashboard = ({ view }: { view: string }) => {
         if (!activityFeed) return [];
 
         const counts: Record<string, number> = {};
-        activityFeed.forEach((item: any) => {
+        activityFeed.forEach((item) => {
             // item.time is "YYYY-MM-DD HH:MM:SS"
             const date = item.time.split(' ')[0];
             counts[date] = (counts[date] || 0) + 1;
@@ -159,13 +161,13 @@ const Dashboard = ({ view }: { view: string }) => {
         if (!reciprocity) return { nodes: [], links: [] };
 
         const nodes = [
-            { id: 'me', group: 1, size: 20 },
-            ...(reciprocity.mutuals || []).map((u: string) => ({ id: u, group: 2, size: 10 })),
-            ...(reciprocity.fans || []).map((u: string) => ({ id: u, group: 3, size: 5 })),
+            { id: 'me', label: 'Me', group: 'me' as const, size: 20 },
+            ...(reciprocity.mutuals || []).map((u) => ({ id: u, label: u, group: 'mutual' as const, size: 10 })),
+            ...(reciprocity.fans || []).map((u) => ({ id: u, label: u, group: 'follower' as const, size: 5 })),
         ];
         const links = [
-            ...(reciprocity.mutuals || []).map((u: string) => ({ source: 'me', target: u })),
-            ...(reciprocity.fans || []).map((u: string) => ({ source: u, target: 'me' })),
+            ...(reciprocity.mutuals || []).map((u) => ({ source: 'me', target: u })),
+            ...(reciprocity.fans || []).map((u) => ({ source: u, target: 'me' })),
         ];
         return { nodes, links };
     }, [reciprocity]);
@@ -193,7 +195,7 @@ const Dashboard = ({ view }: { view: string }) => {
         // CSV Export (Follower Growth)
         if (followerGrowth && followerGrowth.length > 0) {
             const headers = Object.keys(followerGrowth[0]).join(',');
-            const rows = followerGrowth.map((row: any) => Object.values(row).join(',')).join('\n');
+            const rows = followerGrowth.map((row) => Object.values(row).join(',')).join('\n');
             const csvContent = `${headers}\n${rows}`;
             const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const csvUrl = URL.createObjectURL(csvBlob);
@@ -273,8 +275,8 @@ const Dashboard = ({ view }: { view: string }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         <StatCard title="Total Followers" value={stats?.followers || 0} icon={Users} color="text-blue-500" automationId="gitgrow" />
                         <StatCard title="Following" value={stats?.following || 0} icon={UserPlus} color="text-green-500" automationId="autounstarback" />
-                        <StatCard title="Starred Repos" value={stats?.starred_repos || 0} icon={Star} color="text-yellow-500" automationId="autostargrow" />
-                        <StatCard title="Mutuals" value={stats?.mutual_followers || 0} icon={GitMerge} color="text-purple-500" automationId="autostarback" />
+                        <StatCard title="Starred Repos" value={stats?.starredRepos || 0} icon={Star} color="text-yellow-500" automationId="autostargrow" />
+                        <StatCard title="Mutuals" value={stats?.mutualFollowers || 0} icon={GitMerge} color="text-purple-500" automationId="autostarback" />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -292,7 +294,7 @@ const Dashboard = ({ view }: { view: string }) => {
                             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm h-[500px] flex flex-col">
                                 <h3 className="text-lg font-semibold mb-4 text-slate-800 dark:text-white">Live Activity</h3>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
-                                    {activityFeed?.map((item: any, i: number) => (
+                                    {activityFeed?.map((item, i) => (
                                         <div key={i} className="flex items-start space-x-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                                             <div className={`p-2 rounded-full ${item.type === 'follow' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                                                 item.type === 'star' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' :
